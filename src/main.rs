@@ -5,10 +5,9 @@ use crossterm::{
 };
 use ratatui::{
     backend::CrosstermBackend,
-    widgets::{Block, Borders, Paragraph, List, ListItem, Tabs},
+    widgets::{Block, Borders, Paragraph, List, ListItem},
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style, Modifier},
-    text::{Span, Line},
     Terminal,
 };
 use std::io;
@@ -71,19 +70,6 @@ impl App {
         if let Some(index) = row.checked_sub(1) {
             if (index as usize) < self.menu_items.len() {
                 self.selected_menu = index as usize;
-                return true;
-            }
-        }
-        false
-    }
-
-    fn handle_tab_click(&mut self, column: u16, total_width: u16) -> bool {
-        // Calculate tab width (assuming equal distribution)
-        let tab_width = (total_width - 2) / self.tabs.len() as u16;
-        if let Some(index) = column.checked_sub(1) {
-            let tab_index = index / tab_width;
-            if (tab_index as usize) < self.tabs.len() {
-                self.active_tab = tab_index as usize;
                 return true;
             }
         }
@@ -158,23 +144,33 @@ fn main() -> Result<(), io::Error> {
             let right_chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([
-                    Constraint::Length(3),    // Tab bar
+                    Constraint::Length(3),    // Tab buttons area
                     Constraint::Min(0),       // Tab content
                 ].as_ref())
                 .split(chunks[1]);
 
-            // Render tabs
-            let tab_titles: Vec<Line> = app.tabs
-                .iter()
-                .map(|t| Line::from(Span::raw(&t.name)))
-                .collect();
-            
-            let tabs = Tabs::new(tab_titles)
-                .block(Block::default().borders(Borders::ALL))
-                .select(app.active_tab)
-                .style(Style::default())
-                .highlight_style(Style::default().fg(Color::Yellow));
-            f.render_widget(tabs, right_chunks[0]);
+            // Create horizontal layout for tab buttons
+            let tab_button_chunks = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints(
+                    app.tabs.iter().map(|_| Constraint::Ratio(1, app.tabs.len() as u32)).collect::<Vec<_>>()
+                )
+                .split(right_chunks[0]);
+
+            // Render tab buttons
+            for (i, tab) in app.tabs.iter().enumerate() {
+                let button_style = if i == app.active_tab {
+                    Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                } else {
+                    Style::default()
+                };
+
+                let button = Paragraph::new(format!("[ {} ]", tab.name))
+                    .style(button_style)
+                    .block(Block::default().borders(Borders::ALL));
+                
+                f.render_widget(button, tab_button_chunks[i]);
+            }
 
             // Render active tab content
             if let Some(active_tab) = app.tabs.get(app.active_tab) {
@@ -192,21 +188,21 @@ fn main() -> Result<(), io::Error> {
                             let menu_width = (total_width * 20) / 100;
                             
                             if column < menu_width {
-                                // Click in menu area
+                                // Menu click handling
                                 if app.handle_menu_click(row) {
-                                    // Add log to current tab when menu item is clicked
                                     if let Some(tab) = app.tabs.get_mut(app.active_tab) {
                                         tab.add_log(format!("Selected menu item: {}", 
                                             app.menu_items[app.selected_menu]));
                                     }
                                 }
-                            } else {
-                                // Click in tab area (only top 3 rows for tab headers)
-                                if row <= 2 {
-                                    let tab_area_start = menu_width;
-                                    let relative_column = column - tab_area_start;
-                                    let tab_area_width = total_width - menu_width;
-                                    app.handle_tab_click(relative_column, tab_area_width);
+                            } else if row <= 2 {  // Tab buttons area
+                                let tab_area_width = total_width.saturating_sub(menu_width + 2);
+                                let tab_width = tab_area_width / app.tabs.len() as u16;
+                                let relative_column = column.saturating_sub(menu_width + 1);
+                                let clicked_tab = relative_column / tab_width;
+                                
+                                if (clicked_tab as usize) < app.tabs.len() {
+                                    app.active_tab = clicked_tab as usize;
                                 }
                             }
                         }
