@@ -2,9 +2,10 @@ use crate::models::{MenuItem, TabPage};
 
 pub fn create_software_menu() -> MenuItem {
     let tabs = vec![
-        TabPage::new("Create/Import".to_string()),
-        TabPage::new("Transactions".to_string()),
-        TabPage::new("Backup".to_string()),
+        TabPage::new("Master Key".to_string()),
+        TabPage::new("Identity".to_string()),
+        TabPage::new("Vote".to_string()),
+        TabPage::new("Stake".to_string()),
     ];
     
     MenuItem::new("Software Wallet".to_string(), tabs)
