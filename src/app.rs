@@ -1,5 +1,5 @@
 use crate::models::MenuItem;
-use crate::wallets::{ledger_wallet, software_wallet};
+use crate::wallets::{ledger_wallet, software_wallet, solana_cli};
 
 pub struct App {
     pub menu_items: Vec<MenuItem>,
@@ -9,6 +9,7 @@ pub struct App {
 impl App {
     pub fn new() -> Self {
         let menu_items = vec![
+            solana_cli::create_cli_menu(),
             ledger_wallet::create_ledger_menu(),
             software_wallet::create_software_menu(),
         ];
