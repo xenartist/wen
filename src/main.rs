@@ -75,7 +75,15 @@ fn main() -> Result<(), io::Error> {
                         KeyCode::Enter => {
                             let menu = app.current_menu_item_mut();
                             if let Some(tab) = menu.tabs.get_mut(menu.active_tab) {
-                                tab.add_log(format!("Selected menu item: {}", menu.name));
+                                match menu.name.as_str() {
+                                    "Solana CLI" => {
+                                        match tab.name.as_str() {
+                                            "Install CLI" => wallets::solana_cli::handle_install_cli_tab(tab),
+                                            _ => tab.add_log(format!("Selected tab: {}", tab.name)),
+                                        }
+                                    }
+                                    _ => tab.add_log(format!("Selected menu item: {}", menu.name)),
+                                }
                             }
                         }
                         _ => {}

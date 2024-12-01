@@ -1,5 +1,6 @@
 use crate::models::{MenuItem, TabPage};
 use std::process::Command;
+use std::env;
 
 pub fn create_cli_menu() -> MenuItem {
     let mut tab = TabPage::new("Install CLI".to_string());
@@ -29,4 +30,12 @@ pub fn handle_install_cli_tab(tab: &mut TabPage) {
             tab.add_log("Solana CLI not found. Please follow the installation guide above.".to_string());
         }
     }
+
+    // Get and display OS information
+    let os_info = format!(
+        "OS: {} {}",
+        env::consts::OS,
+        env::consts::ARCH
+    );
+    tab.add_log(os_info);
 }
