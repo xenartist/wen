@@ -10,7 +10,7 @@ import (
 func ShowLoginForm(app *tview.Application, rootFlex *tview.Flex, onSuccess func()) {
 	var passwordFieldIndex int
 	loginForm := tview.NewForm().
-		AddTextView("Instructions", "Please input password for existing encrypted wallet to unlock unmineable solXEN Miner", 0, 2, false, false)
+		AddTextView("Instructions", "Please input password to unlock wen app", 0, 2, false, false)
 
 	passwordFieldIndex = loginForm.GetFormItemCount()
 	loginForm.AddPasswordField("Password:", "", 32, '*', nil)
@@ -27,7 +27,7 @@ func ShowLoginForm(app *tview.Application, rootFlex *tview.Flex, onSuccess func(
 			app.Stop()
 		})
 
-	loginForm.SetBorder(true).SetTitle("Unlock umineable solXEN Miner")
+	loginForm.SetBorder(true).SetTitle("Unlock web app")
 	rootFlex.Clear()
 	rootFlex.AddItem(loginForm, 0, 1, true)
 }
