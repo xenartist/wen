@@ -666,3 +666,39 @@ func getTokenSymbol(mint string) string {
 		return "Unknown"
 	}
 }
+
+func SaveNewPassword(password string) error {
+	// Add your password saving logic here
+	// This might include:
+	// 1. Hashing the password
+	// 2. Saving the password hash
+	// 3. Creating initial wallet files
+	// 4. Any other initialization needed for a new wallet
+	return nil
+}
+
+// SaveRecoveryQuestions saves the recovery questions and answers securely
+func SaveRecoveryQuestions(questions, answers []string) error {
+	if len(questions) != 3 || len(answers) != 3 {
+		return fmt.Errorf("exactly 3 questions and answers are required")
+	}
+
+	// Add your logic to securely save the recovery questions and answers
+	// This might include:
+	// 1. Encrypting the answers
+	// 2. Storing questions and encrypted answers in a secure format
+	// 3. Saving to a protected file or database
+
+	return nil
+}
+
+// VerifyRecoveryAnswers checks if the provided answers match the stored ones
+func VerifyRecoveryAnswers(answers []string) bool {
+	// Add your logic to verify recovery answers
+	// This should:
+	// 1. Load stored questions and encrypted answers
+	// 2. Compare provided answers with stored ones
+	// 3. Return true only if all answers match
+
+	return false
+}

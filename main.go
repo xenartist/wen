@@ -27,8 +27,10 @@ func main() {
 			showMainInterface(app)
 		})
 	} else {
-		// No wallet exists, show main interface directly
-		showMainInterface(app)
+		// No wallet exists, show create password screen
+		ui.ShowCreatePasswordForm(app, rootFlex, func() {
+			showMainInterface(app)
+		})
 	}
 
 	ui.SetupInputCapture(app, func() {
