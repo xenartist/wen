@@ -1,2 +1,12 @@
 
-/target
+/wallet
+/xmrigMiner
+debug.log
+/wallet.bkup
+*.gz
+*.zip
+xoon
+solXENconfig.json
+/srbMiner
+/lolMiner
+*.exe
