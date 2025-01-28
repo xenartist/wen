@@ -28,6 +28,29 @@ lazy_static! {
     static ref CURRENT_NETWORK: Mutex<String> = Mutex::new("testnet".to_string());
 }
 
+// Add this new function to handle ledger connection
+fn connect_ledger(s: &mut Cursive) {
+    let output = Command::new("solana")
+        .arg("address")
+        .arg("--keypair")
+        .arg("usb://ledger")
+        .output();
+
+    match output {
+        Ok(output) => {
+            if output.status.success() {
+                update_logs(s, "✓ Ledger connected successfully!");
+            } else {
+                let error = String::from_utf8_lossy(&output.stderr);
+                update_logs(s, &format!("✗ Failed to connect to Ledger: {}", error));
+            }
+        }
+        Err(e) => {
+            update_logs(s, &format!("✗ Error executing command: {}", e));
+        }
+    }
+}
+
 // Create and return the validator view layout
 pub fn get_ledger_view() -> LinearLayout {
     let dashboard = Panel::new(LinearLayout::vertical())
@@ -36,10 +59,15 @@ pub fn get_ledger_view() -> LinearLayout {
         .fixed_height(5)
         .with_name("dashboard");
 
-    let config = Panel::new(LinearLayout::vertical())
-        .title("Config")
-        .full_width()
-        .min_height(10);
+    // Create config section with Connect button
+    let config = Panel::new(
+        LinearLayout::vertical()
+            .child(Button::new("Connect Ledger", connect_ledger))
+            .child(DummyView.fixed_height(1))  // Add some spacing
+    )
+    .title("Config")
+    .full_width()
+    .min_height(10);
 
     let logs = Panel::new(
         ScrollView::new(TextView::new(""))
