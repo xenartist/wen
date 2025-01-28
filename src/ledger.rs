@@ -43,6 +43,7 @@ fn connect_ledger(s: &mut Cursive) {
             } else {
                 let error = String::from_utf8_lossy(&output.stderr);
                 update_logs(s, &format!("✗ Failed to connect to Ledger: {}", error));
+                update_logs(s, &format!("Make sure your Ledger is connected, unlocked, and the Solana app is open."));
             }
         }
         Err(e) => {
