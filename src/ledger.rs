@@ -29,7 +29,7 @@ lazy_static! {
 }
 
 // Create and return the validator view layout
-pub fn get_validator_view() -> LinearLayout {
+pub fn get_ledger_view() -> LinearLayout {
     let dashboard = Panel::new(LinearLayout::vertical())
         .title("Dashboard")
         .full_width()

@@ -1,4 +1,4 @@
-mod validator;
+mod ledger;
 
 use cursive::Cursive;
 use cursive::theme::{Theme, BaseColor, Color, PaletteColor, ColorStyle};
@@ -18,10 +18,10 @@ lazy_static! {
 // Handle menu item selection
 fn menu_selected(siv: &mut Cursive, item: &str) {
     match item {
-        "validator" => {
+        "ledger" => {
             // Replace right panel content with validator view
             siv.call_on_name("right_sections", |view: &mut LinearLayout| {
-                *view = validator::get_validator_view();
+                *view = ledger::get_ledger_view();
             });
         },
         "quit_info" => {
@@ -77,7 +77,7 @@ fn main() {
         .on_submit(menu_selected);
     
     // Add menu items
-    menu.add_item("X1 Validator", "validator");
+    menu.add_item("Ledger Hardware Wallet", "ledger");
     menu.add_item("", "");  // Add empty item as spacer
     menu.add_item(
         StyledString::styled(
@@ -95,17 +95,17 @@ fn main() {
         "author_info"
     );
 
-    // Set default selection to X1 Validator
+    // Set default selection to Ledger Hardware Wallet
     menu.set_selection(0);
     
     // Create left panel with title
     let left_panel = Panel::new(menu)
-        .title("xoon")
+        .title("wen")
         .min_width(20)
         .full_height();
 
-    // Create initial right panel with validator view
-    let right_sections = validator::get_validator_view()
+    // Create initial right panel with ledger view
+    let right_sections = ledger::get_ledger_view()
         .with_name("right_sections")
         .full_width()
         .full_height();
