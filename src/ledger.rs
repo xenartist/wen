@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::env;
 use std::fs::{self};
 use regex::Regex;
-use cursive::views::{LinearLayout, Panel, TextView, TextArea, Button, DummyView, ResizedView, ScrollView, Dialog, RadioGroup};
+use cursive::views::{LinearLayout, Panel, TextView, TextArea, Button, DummyView, ResizedView, ScrollView, Dialog, RadioGroup, SelectView, EditView};
 use cursive::traits::*;
 use cursive::Cursive;
 use lazy_static::lazy_static;
@@ -12,9 +12,10 @@ use std::collections::VecDeque;
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::Mutex;
-use cursive::theme::{BaseColor, Color, Style};
+use cursive::theme::{BaseColor, Color, Style, ColorStyle};
 use cursive::utils::markup::StyledString;
 use std::path::PathBuf;
+use cursive::views::NamedView;
 
 // Add a constant for maximum log lines
 const MAX_LOG_LINES: usize = 100;
@@ -52,6 +53,126 @@ fn connect_ledger(s: &mut Cursive) {
     }
 }
 
+// Add these functions to update button texts
+fn update_x_button_text(s: &mut Cursive, value: &str) {
+    s.call_on_name("x_button", |view: &mut Button| {
+        view.set_label(format!("▼ Select x' ({})", value));
+    });
+}
+
+fn update_y_button_text(s: &mut Cursive, value: &str) {
+    s.call_on_name("y_button", |view: &mut Button| {
+        view.set_label(format!("▼ Select y' ({})", value));
+    });
+}
+
+fn show_wallet_path_select(s: &mut Cursive) {
+    let mut select = SelectView::new()
+        .h_align(cursive::align::HAlign::Left)
+        .autojump();
+    
+    // Add predefined wallet paths
+    select.add_item("Default (x'=1)", "usb://ledger?key=1".to_string());
+    select.add_item("m/44'/501'/x' (x'=0)", "usb://ledger?key=0".to_string());
+    select.add_item("m/44'/501'/x' (x'=1)", "usb://ledger?key=1".to_string());
+    select.add_item("m/44'/501'/x' (x'=2)", "usb://ledger?key=2".to_string());
+    select.add_item("m/44'/501'/x' (x'=3)", "usb://ledger?key=3".to_string());
+    select.add_item("m/44'/501'/x' (x'=4)", "usb://ledger?key=4".to_string());
+    select.add_item("m/44'/501'/x' (x'=5)", "usb://ledger?key=5".to_string());
+    select.add_item("m/44'/501'/x' (x'=6)", "usb://ledger?key=6".to_string());
+    select.add_item("m/44'/501'/x' (x'=7)", "usb://ledger?key=7".to_string());
+    select.add_item("m/44'/501'/x' (x'=8)", "usb://ledger?key=8".to_string());
+    select.add_item("m/44'/501'/x' (x'=9)", "usb://ledger?key=9".to_string());
+
+    select.set_on_submit(move |s, path: &String| {
+        s.call_on_name("wallet_path_edit", |view: &mut EditView| {
+            view.set_content(path);
+        });
+        s.pop_layer();
+    });
+
+    s.add_layer(
+        Dialog::around(select)
+            .title("Select x' Path")
+            .button("Cancel", |s| { s.pop_layer(); })
+    );
+}
+
+fn show_account_select(s: &mut Cursive) {
+    let mut select = SelectView::new()
+        .h_align(cursive::align::HAlign::Left)
+        .autojump();
+    
+    select.add_item("Account 0", "0".to_string());
+    select.add_item("Account 1", "1".to_string());
+    select.add_item("Account 2", "2".to_string());
+
+    select.set_on_submit(move |s, account: &String| {
+        s.call_on_name("wallet_path_text", |view: &mut TextView| {
+            let styled_text = StyledString::styled(
+                format!("usb://ledger?key={}", account),
+                ColorStyle::new(
+                    Color::Dark(BaseColor::White),
+                    Color::Dark(BaseColor::Blue)
+                )
+            );
+            view.set_content(styled_text);
+        });
+        update_x_button_text(s, account);
+        s.pop_layer();
+    });
+
+    s.add_layer(
+        Dialog::around(select)
+            .title("Select Account Index (x')")
+            .button("Cancel", |s| { s.pop_layer(); })
+    );
+}
+
+fn show_address_select(s: &mut Cursive) {
+    let mut select = SelectView::new()
+        .h_align(cursive::align::HAlign::Left)
+        .autojump();
+    
+    select.add_item("N/A (no address index)", "N/A".to_string());
+    select.add_item("Address 0", "0".to_string());
+    select.add_item("Address 1", "1".to_string());
+    select.add_item("Address 2", "2".to_string());
+
+    select.set_on_submit(move |s, address: &String| {
+        s.call_on_name("wallet_path_text", |view: &mut TextView| {
+            let current_path = view.get_content().source().to_string();
+            if let Some(x_value) = current_path
+                .strip_prefix("usb://ledger?key=")
+                .and_then(|s| s.split('/').next()) 
+            {
+                let new_text = if address == "N/A" {
+                    format!("usb://ledger?key={}", x_value)
+                } else {
+                    format!("usb://ledger?key={}/{}", x_value, address)
+                };
+                
+                let styled_text = StyledString::styled(
+                    new_text,
+                    ColorStyle::new(
+                        Color::Dark(BaseColor::White),
+                        Color::Dark(BaseColor::Blue)
+                    )
+                );
+                view.set_content(styled_text);
+            }
+        });
+        update_y_button_text(s, address);
+        s.pop_layer();
+    });
+
+    s.add_layer(
+        Dialog::around(select)
+            .title("Select Address Index (y')")
+            .button("Cancel", |s| { s.pop_layer(); })
+    );
+}
+
 // Create and return the validator view layout
 pub fn get_ledger_view() -> LinearLayout {
     let dashboard = Panel::new(LinearLayout::vertical())
@@ -60,11 +181,40 @@ pub fn get_ledger_view() -> LinearLayout {
         .fixed_height(5)
         .with_name("dashboard");
 
-    // Create config section with Connect button
+    // Create config section
     let config = Panel::new(
         LinearLayout::vertical()
             .child(Button::new("Connect Ledger", connect_ledger))
-            .child(DummyView.fixed_height(1))  // Add some spacing
+            .child(DummyView.fixed_height(1))
+            .child(TextView::new("ID (WITHDRAW) KEY:"))
+            .child(
+                LinearLayout::horizontal()
+                    .child(
+                        Button::new("▼ Select x' (1)", show_account_select)
+                            .with_name("x_button")
+                            .fixed_width(20)
+                    )
+                    .child(DummyView.fixed_width(1))
+                    .child(
+                        Button::new("▼ Select y' (N/A)", show_address_select)
+                            .with_name("y_button")
+                            .fixed_width(20)
+                    )
+                    .child(DummyView.fixed_width(1))
+                    .child(
+                        TextView::new(
+                            StyledString::styled(
+                                "usb://ledger?key=1",
+                                ColorStyle::new(
+                                    Color::Dark(BaseColor::White),
+                                    Color::Dark(BaseColor::Blue)
+                                )
+                            )
+                        )
+                        .with_name("wallet_path_text")
+                    )
+            )
+            .child(DummyView.fixed_height(1))
     )
     .title("Config")
     .full_width()
@@ -101,5 +251,12 @@ fn update_logs(siv: &mut Cursive, message: &str) {
     siv.call_on_name("log_view", |view: &mut Panel<ScrollView<TextView>>| {
         view.get_inner_mut().get_inner_mut().append(&clean_message);
         view.get_inner_mut().get_inner_mut().append("\n");
+    });
+}
+
+// Add this function to handle wallet path selection changes
+fn on_wallet_path_select(s: &mut Cursive, path: &str) {
+    s.call_on_name("wallet_path_edit", |view: &mut EditView| {
+        view.set_content(path);
     });
 }
