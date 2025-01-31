@@ -107,13 +107,8 @@ fn show_account_select(s: &mut Cursive) {
         .h_align(cursive::align::HAlign::Left)
         .autojump();
     
-    // Get current x' value first
     let current_value = s.call_on_name("x_button", |button: &mut Button| {
         let label = button.label().to_string();
-        // Convert label to bytes for debugging
-        let bytes: Vec<u8> = label.bytes().collect();
-        
-        // Try different ways to get the number
         if let Some(num_str) = label.chars()
             .filter(|c| c.is_digit(10))
             .collect::<String>()
@@ -126,18 +121,16 @@ fn show_account_select(s: &mut Cursive) {
         }
     }).unwrap_or(1);
     
-    update_logs(s, &format!("Raw button label bytes: {:?}", current_value));
     update_logs(s, &format!("Current value from button: {}", current_value));
     
-    // Add items
     select.add_item("Account 0", "0".to_string());
     select.add_item("Account 1", "1".to_string());
     select.add_item("Account 2", "2".to_string());
     
-    update_logs(s, &format!("Setting selection to index: {}", current_value));
     select.set_selection(current_value);
 
     select.set_on_submit(move |s, account: &String| {
+        // Update x button and path
         s.call_on_name("wallet_path_text", |view: &mut TextView| {
             let styled_text = StyledString::styled(
                 format!("usb://ledger?key={}", account),
@@ -149,6 +142,10 @@ fn show_account_select(s: &mut Cursive) {
             view.set_content(styled_text);
         });
         update_x_button_text(s, account);
+        
+        // Reset y value to N/A
+        update_y_button_text(s, "N/A");
+        
         s.pop_layer();
     });
 
@@ -248,10 +245,8 @@ fn show_vote_account_select(s: &mut Cursive) {
         .h_align(cursive::align::HAlign::Left)
         .autojump();
     
-    // Get current x' value first
     let current_value = s.call_on_name("vote_x_button", |button: &mut Button| {
         let label = button.label().to_string();
-        // Try different ways to get the number
         if let Some(num_str) = label.chars()
             .filter(|c| c.is_digit(10))
             .collect::<String>()
@@ -266,15 +261,14 @@ fn show_vote_account_select(s: &mut Cursive) {
     
     update_logs(s, &format!("Current value from vote button: {}", current_value));
     
-    // Add items
     select.add_item("Account 0", "0".to_string());
     select.add_item("Account 1", "1".to_string());
     select.add_item("Account 2", "2".to_string());
     
-    update_logs(s, &format!("Setting vote selection to index: {}", current_value));
     select.set_selection(current_value);
 
     select.set_on_submit(move |s, account: &String| {
+        // Update x button and path
         s.call_on_name("vote_path_text", |view: &mut TextView| {
             let styled_text = StyledString::styled(
                 format!("usb://ledger?key={}", account),
@@ -286,6 +280,10 @@ fn show_vote_account_select(s: &mut Cursive) {
             view.set_content(styled_text);
         });
         update_vote_x_button_text(s, account);
+        
+        // Reset y value to N/A
+        update_vote_y_button_text(s, "N/A");
+        
         s.pop_layer();
     });
 
