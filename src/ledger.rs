@@ -59,7 +59,6 @@ fn update_x_button_text(s: &mut Cursive, value: &str) {
     s.call_on_name("x_button", |view: &mut Button| {
         view.set_label(new_label.clone());
     });
-    update_logs(s, &format!("Updated button text to: {}", new_label));
 }
 
 fn update_y_button_text(s: &mut Cursive, value: &str) {
@@ -67,7 +66,6 @@ fn update_y_button_text(s: &mut Cursive, value: &str) {
     s.call_on_name("y_button", |view: &mut Button| {
         view.set_label(new_label.clone());
     });
-    update_logs(s, &format!("Updated y button text to: {}", new_label));
 }
 
 fn show_wallet_path_select(s: &mut Cursive) {
@@ -120,8 +118,6 @@ fn show_account_select(s: &mut Cursive) {
             0
         }
     }).unwrap_or(0);
-    
-    update_logs(s, &format!("Current value from button: {}", current_value));
     
     select.add_item("Account 0", "0".to_string());
     select.add_item("Account 1", "1".to_string());
@@ -178,15 +174,12 @@ fn show_address_select(s: &mut Cursive) {
         }
     }).unwrap_or(0);
     
-    update_logs(s, &format!("Current value from y button: {}", current_value));
-    
     // Add items
     select.add_item("N/A (no address index)", "N/A".to_string());
     select.add_item("Address 0", "0".to_string());
     select.add_item("Address 1", "1".to_string());
     select.add_item("Address 2", "2".to_string());
     
-    update_logs(s, &format!("Setting y selection to index: {}", current_value));
     select.set_selection(current_value);
 
     select.set_on_submit(move |s, address: &String| {
@@ -229,7 +222,6 @@ fn update_vote_x_button_text(s: &mut Cursive, value: &str) {
     s.call_on_name("vote_x_button", |view: &mut Button| {
         view.set_label(new_label.clone());
     });
-    update_logs(s, &format!("Updated vote button text to: {}", new_label));
 }
 
 fn update_vote_y_button_text(s: &mut Cursive, value: &str) {
@@ -237,7 +229,6 @@ fn update_vote_y_button_text(s: &mut Cursive, value: &str) {
     s.call_on_name("vote_y_button", |view: &mut Button| {
         view.set_label(new_label.clone());
     });
-    update_logs(s, &format!("Updated vote y button text to: {}", new_label));
 }
 
 fn show_vote_account_select(s: &mut Cursive) {
@@ -258,8 +249,6 @@ fn show_vote_account_select(s: &mut Cursive) {
             0
         }
     }).unwrap_or(0);
-    
-    update_logs(s, &format!("Current value from vote button: {}", current_value));
     
     select.add_item("Account 0", "0".to_string());
     select.add_item("Account 1", "1".to_string());
@@ -314,15 +303,12 @@ fn show_vote_address_select(s: &mut Cursive) {
         }
     }).unwrap_or(1);
     
-    update_logs(s, &format!("Current value from vote y button: {}", current_value));
-    
     // Add items
     select.add_item("N/A (no address index)", "N/A".to_string());
     select.add_item("Address 0", "0".to_string());
     select.add_item("Address 1", "1".to_string());
     select.add_item("Address 2", "2".to_string());
     
-    update_logs(s, &format!("Setting vote y selection to index: {}", current_value));
     select.set_selection(current_value);
 
     select.set_on_submit(move |s, address: &String| {
@@ -357,6 +343,40 @@ fn show_vote_address_select(s: &mut Cursive) {
             .title("Select Address Index (y')")
             .button("Cancel", |s| { s.pop_layer(); })
     );
+}
+
+// Add this function to get public key
+fn get_pubkey(path: &str) -> Result<String, String> {
+    let output = Command::new("solana")
+        .arg("address")
+        .arg("-k")
+        .arg(path)
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).to_string())
+    }
+}
+
+// Add this function to handle button click
+fn show_pubkey(s: &mut Cursive, path_view_name: &str, pubkey_view_name: &str) {
+    if let Some(path) = s.call_on_name(path_view_name, |view: &mut TextView| {
+        view.get_content().source().to_string()
+    }) {
+        match get_pubkey(&path) {
+            Ok(pubkey) => {
+                s.call_on_name(pubkey_view_name, |view: &mut TextView| {
+                    view.set_content(pubkey);
+                });
+            }
+            Err(err) => {
+                update_logs(s, &format!("Failed to get public key: {}", err));
+            }
+        }
+    }
 }
 
 // Create and return the validator view layout
@@ -413,6 +433,15 @@ pub fn get_ledger_view() -> LinearLayout {
                         )
                         .with_name("wallet_path_text")
                     )
+                    .child(DummyView.fixed_width(1))
+                    .child(
+                        Button::new("Show Pub Key", move |s| {
+                            show_pubkey(s, "wallet_path_text", "wallet_pubkey_text");
+                        })
+                        .fixed_width(15)
+                    )
+                    .child(DummyView.fixed_width(1))
+                    .child(TextView::new("").with_name("wallet_pubkey_text"))
             )
             .child(DummyView.fixed_height(1))
             // Add VOTE KEY section
@@ -443,6 +472,15 @@ pub fn get_ledger_view() -> LinearLayout {
                         )
                         .with_name("vote_path_text")
                     )
+                    .child(DummyView.fixed_width(1))
+                    .child(
+                        Button::new("Show Pub Key", move |s| {
+                            show_pubkey(s, "vote_path_text", "vote_pubkey_text");
+                        })
+                        .fixed_width(15)
+                    )
+                    .child(DummyView.fixed_width(1))
+                    .child(TextView::new("").with_name("vote_pubkey_text"))
             )
             .child(DummyView.fixed_height(1))
     )
