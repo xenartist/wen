@@ -373,7 +373,7 @@ fn show_pubkey(s: &mut Cursive, path_view_name: &str, pubkey_view_name: &str) {
                 });
             }
             Err(err) => {
-                update_logs(s, &format!("Failed to get public key: {}", err));
+                update_logs(s, &format!("Failed to get public key: {} \nPlease check if the ledger is connected, unlocked and the Solana app is open.", err));
             }
         }
     }
