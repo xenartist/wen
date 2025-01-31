@@ -459,8 +459,25 @@ fn show_stake_account_select(s: &mut Cursive, stake_index: usize) {
 
     let stake_index = stake_index.clone();
     select.set_on_submit(move |s, account: &String| {
+        // Update x button
         update_stake_x_button_text(s, stake_index, account);
-        update_stake_path(s, stake_index);
+        
+        // Reset y to default value (stake_index)
+        let default_y = stake_index.to_string();
+        update_stake_y_button_text(s, stake_index, &default_y);
+
+        // Update path text with new x and default y
+        s.call_on_name(&format!("stake{}_path_text", stake_index), |view: &mut TextView| {
+            let styled_text = StyledString::styled(
+                format!("usb://ledger?key={}/{}", account, default_y),
+                ColorStyle::new(
+                    Color::Dark(BaseColor::White),
+                    Color::Dark(BaseColor::Blue)
+                )
+            );
+            view.set_content(styled_text);
+        });
+
         s.pop_layer();
     });
 
@@ -476,6 +493,7 @@ fn show_stake_address_select(s: &mut Cursive, stake_index: usize) {
         .h_align(cursive::align::HAlign::Left)
         .autojump();
     
+    // Get current y value
     let current_value = s.call_on_name(&format!("stake{}_y_button", stake_index), |button: &mut Button| {
         let label = button.label().to_string();
         if let Some(num_str) = label.chars()
@@ -501,8 +519,31 @@ fn show_stake_address_select(s: &mut Cursive, stake_index: usize) {
 
     let stake_index = stake_index.clone();
     select.set_on_submit(move |s, address: &String| {
+        // First get the current path to extract the x value
+        let current_x = s.call_on_name(&format!("stake{}_path_text", stake_index), |view: &mut TextView| {
+            let current_path = view.get_content().source().to_string();
+            current_path
+                .strip_prefix("usb://ledger?key=")
+                .and_then(|s| s.split('/').next())
+                .unwrap_or("0")
+                .to_string()
+        }).unwrap_or_else(|| "0".to_string());
+
+        // Update y button
         update_stake_y_button_text(s, stake_index, address);
-        update_stake_path(s, stake_index);
+
+        // Update path text with current x value and new y value
+        s.call_on_name(&format!("stake{}_path_text", stake_index), |view: &mut TextView| {
+            let styled_text = StyledString::styled(
+                format!("usb://ledger?key={}/{}", current_x, address),
+                ColorStyle::new(
+                    Color::Dark(BaseColor::White),
+                    Color::Dark(BaseColor::Blue)
+                )
+            );
+            view.set_content(styled_text);
+        });
+
         s.pop_layer();
     });
 
