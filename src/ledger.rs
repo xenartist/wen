@@ -63,9 +63,11 @@ fn update_x_button_text(s: &mut Cursive, value: &str) {
 }
 
 fn update_y_button_text(s: &mut Cursive, value: &str) {
+    let new_label = format!("▼ Select y' ({})", value);
     s.call_on_name("y_button", |view: &mut Button| {
-        view.set_label(format!("▼ Select y' ({})", value));
+        view.set_label(new_label.clone());
     });
+    update_logs(s, &format!("Updated y button text to: {}", new_label));
 }
 
 fn show_wallet_path_select(s: &mut Cursive) {
@@ -163,22 +165,32 @@ fn show_address_select(s: &mut Cursive) {
         .autojump();
     
     // Get current y' value first
-    let current_selection = s.call_on_name("y_button", |button: &mut Button| {
-        button.label()
-            .strip_prefix("▼ Select y' (")
-            .and_then(|s| s.strip_suffix(")"))
-            .map(|s| match s {
-                "N/A" => 0,
-                value => value.parse::<usize>().map(|n| n + 1).unwrap_or(0)
-            })
-            .unwrap_or(0)
+    let current_value = s.call_on_name("y_button", |button: &mut Button| {
+        let label = button.label().to_string();
+        // Try different ways to get the value
+        let value = label.chars()
+            .filter(|c| c.is_digit(10) || *c == 'N')
+            .collect::<String>();
+        
+        if value == "N" || value == "NA" {
+            0  // Index for "N/A" option
+        } else if let Ok(num) = value.parse::<usize>() {
+            num + 1  // Add 1 because "N/A" is at index 0
+        } else {
+            0
+        }
     }).unwrap_or(0);
-
+    
+    update_logs(s, &format!("Current value from y button: {}", current_value));
+    
+    // Add items
     select.add_item("N/A (no address index)", "N/A".to_string());
     select.add_item("Address 0", "0".to_string());
     select.add_item("Address 1", "1".to_string());
     select.add_item("Address 2", "2".to_string());
-    select.set_selection(current_selection);
+    
+    update_logs(s, &format!("Setting y selection to index: {}", current_value));
+    select.set_selection(current_value);
 
     select.set_on_submit(move |s, address: &String| {
         s.call_on_name("wallet_path_text", |view: &mut TextView| {
@@ -224,9 +236,11 @@ fn update_vote_x_button_text(s: &mut Cursive, value: &str) {
 }
 
 fn update_vote_y_button_text(s: &mut Cursive, value: &str) {
+    let new_label = format!("▼ Select y' ({})", value);
     s.call_on_name("vote_y_button", |view: &mut Button| {
-        view.set_label(format!("▼ Select y' ({})", value));
+        view.set_label(new_label.clone());
     });
+    update_logs(s, &format!("Updated vote y button text to: {}", new_label));
 }
 
 fn show_vote_account_select(s: &mut Cursive) {
@@ -288,22 +302,30 @@ fn show_vote_address_select(s: &mut Cursive) {
         .autojump();
     
     // Get current y' value first
-    let current_selection = s.call_on_name("vote_y_button", |button: &mut Button| {
-        button.label()
-            .strip_prefix("▼ Select y' (")
-            .and_then(|s| s.strip_suffix(")"))
-            .map(|s| match s {
-                "N/A" => 0,
-                value => value.parse::<usize>().map(|n| n + 1).unwrap_or(0)
-            })
-            .unwrap_or(0)
-    }).unwrap_or(0);
-
+    let current_value = s.call_on_name("vote_y_button", |button: &mut Button| {
+        let label = button.label().to_string();
+        // Try different ways to get the value
+        let value = label.chars()
+            .filter(|c| c.is_digit(10))
+            .collect::<String>();
+        
+        if let Ok(num) = value.parse::<usize>() {
+            num + 1  // Add 1 because "N/A" is at index 0
+        } else {
+            1  // Default to index 1 (Address 0) for vote key
+        }
+    }).unwrap_or(1);
+    
+    update_logs(s, &format!("Current value from vote y button: {}", current_value));
+    
+    // Add items
     select.add_item("N/A (no address index)", "N/A".to_string());
     select.add_item("Address 0", "0".to_string());
     select.add_item("Address 1", "1".to_string());
     select.add_item("Address 2", "2".to_string());
-    select.set_selection(current_selection);
+    
+    update_logs(s, &format!("Setting vote y selection to index: {}", current_value));
+    select.set_selection(current_value);
 
     select.set_on_submit(move |s, address: &String| {
         s.call_on_name("vote_path_text", |view: &mut TextView| {
