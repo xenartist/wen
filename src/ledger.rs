@@ -55,9 +55,11 @@ fn connect_ledger(s: &mut Cursive) {
 
 // Add these functions to update button texts
 fn update_x_button_text(s: &mut Cursive, value: &str) {
+    let new_label = format!("▼ Select x' ({})", value);
     s.call_on_name("x_button", |view: &mut Button| {
-        view.set_label(format!("▼ Select x' ({})", value));
+        view.set_label(new_label.clone());
     });
+    update_logs(s, &format!("Updated button text to: {}", new_label));
 }
 
 fn update_y_button_text(s: &mut Cursive, value: &str) {
@@ -103,9 +105,35 @@ fn show_account_select(s: &mut Cursive) {
         .h_align(cursive::align::HAlign::Left)
         .autojump();
     
+    // Get current x' value first
+    let current_value = s.call_on_name("x_button", |button: &mut Button| {
+        let label = button.label().to_string();
+        // Convert label to bytes for debugging
+        let bytes: Vec<u8> = label.bytes().collect();
+        
+        // Try different ways to get the number
+        if let Some(num_str) = label.chars()
+            .filter(|c| c.is_digit(10))
+            .collect::<String>()
+            .parse::<usize>()
+            .ok() 
+        {
+            num_str
+        } else {
+            1
+        }
+    }).unwrap_or(1);
+    
+    update_logs(s, &format!("Raw button label bytes: {:?}", current_value));
+    update_logs(s, &format!("Current value from button: {}", current_value));
+    
+    // Add items
     select.add_item("Account 0", "0".to_string());
     select.add_item("Account 1", "1".to_string());
     select.add_item("Account 2", "2".to_string());
+    
+    update_logs(s, &format!("Setting selection to index: {}", current_value));
+    select.set_selection(current_value);
 
     select.set_on_submit(move |s, account: &String| {
         s.call_on_name("wallet_path_text", |view: &mut TextView| {
@@ -134,10 +162,23 @@ fn show_address_select(s: &mut Cursive) {
         .h_align(cursive::align::HAlign::Left)
         .autojump();
     
+    // Get current y' value first
+    let current_selection = s.call_on_name("y_button", |button: &mut Button| {
+        button.label()
+            .strip_prefix("▼ Select y' (")
+            .and_then(|s| s.strip_suffix(")"))
+            .map(|s| match s {
+                "N/A" => 0,
+                value => value.parse::<usize>().map(|n| n + 1).unwrap_or(0)
+            })
+            .unwrap_or(0)
+    }).unwrap_or(0);
+
     select.add_item("N/A (no address index)", "N/A".to_string());
     select.add_item("Address 0", "0".to_string());
     select.add_item("Address 1", "1".to_string());
     select.add_item("Address 2", "2".to_string());
+    select.set_selection(current_selection);
 
     select.set_on_submit(move |s, address: &String| {
         s.call_on_name("wallet_path_text", |view: &mut TextView| {
@@ -173,6 +214,131 @@ fn show_address_select(s: &mut Cursive) {
     );
 }
 
+// Add these functions for vote key
+fn update_vote_x_button_text(s: &mut Cursive, value: &str) {
+    let new_label = format!("▼ Select x' ({})", value);
+    s.call_on_name("vote_x_button", |view: &mut Button| {
+        view.set_label(new_label.clone());
+    });
+    update_logs(s, &format!("Updated vote button text to: {}", new_label));
+}
+
+fn update_vote_y_button_text(s: &mut Cursive, value: &str) {
+    s.call_on_name("vote_y_button", |view: &mut Button| {
+        view.set_label(format!("▼ Select y' ({})", value));
+    });
+}
+
+fn show_vote_account_select(s: &mut Cursive) {
+    let mut select = SelectView::new()
+        .h_align(cursive::align::HAlign::Left)
+        .autojump();
+    
+    // Get current x' value first
+    let current_value = s.call_on_name("vote_x_button", |button: &mut Button| {
+        let label = button.label().to_string();
+        // Try different ways to get the number
+        if let Some(num_str) = label.chars()
+            .filter(|c| c.is_digit(10))
+            .collect::<String>()
+            .parse::<usize>()
+            .ok() 
+        {
+            num_str
+        } else {
+            1
+        }
+    }).unwrap_or(1);
+    
+    update_logs(s, &format!("Current value from vote button: {}", current_value));
+    
+    // Add items
+    select.add_item("Account 0", "0".to_string());
+    select.add_item("Account 1", "1".to_string());
+    select.add_item("Account 2", "2".to_string());
+    
+    update_logs(s, &format!("Setting vote selection to index: {}", current_value));
+    select.set_selection(current_value);
+
+    select.set_on_submit(move |s, account: &String| {
+        s.call_on_name("vote_path_text", |view: &mut TextView| {
+            let styled_text = StyledString::styled(
+                format!("usb://ledger?key={}", account),
+                ColorStyle::new(
+                    Color::Dark(BaseColor::White),
+                    Color::Dark(BaseColor::Blue)
+                )
+            );
+            view.set_content(styled_text);
+        });
+        update_vote_x_button_text(s, account);
+        s.pop_layer();
+    });
+
+    s.add_layer(
+        Dialog::around(select)
+            .title("Select Account Index (x')")
+            .button("Cancel", |s| { s.pop_layer(); })
+    );
+}
+
+fn show_vote_address_select(s: &mut Cursive) {
+    let mut select = SelectView::new()
+        .h_align(cursive::align::HAlign::Left)
+        .autojump();
+    
+    // Get current y' value first
+    let current_selection = s.call_on_name("vote_y_button", |button: &mut Button| {
+        button.label()
+            .strip_prefix("▼ Select y' (")
+            .and_then(|s| s.strip_suffix(")"))
+            .map(|s| match s {
+                "N/A" => 0,
+                value => value.parse::<usize>().map(|n| n + 1).unwrap_or(0)
+            })
+            .unwrap_or(0)
+    }).unwrap_or(0);
+
+    select.add_item("N/A (no address index)", "N/A".to_string());
+    select.add_item("Address 0", "0".to_string());
+    select.add_item("Address 1", "1".to_string());
+    select.add_item("Address 2", "2".to_string());
+    select.set_selection(current_selection);
+
+    select.set_on_submit(move |s, address: &String| {
+        s.call_on_name("vote_path_text", |view: &mut TextView| {
+            let current_path = view.get_content().source().to_string();
+            if let Some(x_value) = current_path
+                .strip_prefix("usb://ledger?key=")
+                .and_then(|s| s.split('/').next()) 
+            {
+                let new_text = if address == "N/A" {
+                    format!("usb://ledger?key={}", x_value)
+                } else {
+                    format!("usb://ledger?key={}/{}", x_value, address)
+                };
+                
+                let styled_text = StyledString::styled(
+                    new_text,
+                    ColorStyle::new(
+                        Color::Dark(BaseColor::White),
+                        Color::Dark(BaseColor::Blue)
+                    )
+                );
+                view.set_content(styled_text);
+            }
+        });
+        update_vote_y_button_text(s, address);
+        s.pop_layer();
+    });
+
+    s.add_layer(
+        Dialog::around(select)
+            .title("Select Address Index (y')")
+            .button("Cancel", |s| { s.pop_layer(); })
+    );
+}
+
 // Create and return the validator view layout
 pub fn get_ledger_view() -> LinearLayout {
     let dashboard = Panel::new(LinearLayout::vertical())
@@ -186,7 +352,8 @@ pub fn get_ledger_view() -> LinearLayout {
         LinearLayout::vertical()
             .child(Button::new("Connect Ledger", connect_ledger))
             .child(DummyView.fixed_height(1))
-            .child(TextView::new("ID (WITHDRAW) KEY:"))
+            // VAULT KEY section
+            .child(TextView::new("VAULT (ID/WITHDRAW) KEY:"))
             .child(
                 LinearLayout::horizontal()
                     .child(
@@ -212,6 +379,36 @@ pub fn get_ledger_view() -> LinearLayout {
                             )
                         )
                         .with_name("wallet_path_text")
+                    )
+            )
+            .child(DummyView.fixed_height(1))
+            // Add VOTE KEY section
+            .child(TextView::new("VOTE KEY:"))
+            .child(
+                LinearLayout::horizontal()
+                    .child(
+                        Button::new("▼ Select x' (1)", show_vote_account_select)
+                            .with_name("vote_x_button")
+                            .fixed_width(20)
+                    )
+                    .child(DummyView.fixed_width(1))
+                    .child(
+                        Button::new("▼ Select y' (0)", show_vote_address_select)
+                            .with_name("vote_y_button")
+                            .fixed_width(20)
+                    )
+                    .child(DummyView.fixed_width(1))
+                    .child(
+                        TextView::new(
+                            StyledString::styled(
+                                "usb://ledger?key=1/0",
+                                ColorStyle::new(
+                                    Color::Dark(BaseColor::White),
+                                    Color::Dark(BaseColor::Blue)
+                                )
+                            )
+                        )
+                        .with_name("vote_path_text")
                     )
             )
             .child(DummyView.fixed_height(1))
