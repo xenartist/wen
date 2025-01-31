@@ -117,9 +117,9 @@ fn show_account_select(s: &mut Cursive) {
         {
             num_str
         } else {
-            1
+            0
         }
-    }).unwrap_or(1);
+    }).unwrap_or(0);
     
     update_logs(s, &format!("Current value from button: {}", current_value));
     
@@ -255,9 +255,9 @@ fn show_vote_account_select(s: &mut Cursive) {
         {
             num_str
         } else {
-            1
+            0
         }
-    }).unwrap_or(1);
+    }).unwrap_or(0);
     
     update_logs(s, &format!("Current value from vote button: {}", current_value));
     
@@ -390,7 +390,7 @@ pub fn get_ledger_view() -> LinearLayout {
             .child(
                 LinearLayout::horizontal()
                     .child(
-                        Button::new("▼ Select x' (1)", show_account_select)
+                        Button::new("▼ Select x' (0)", show_account_select)
                             .with_name("x_button")
                             .fixed_width(20)
                     )
@@ -404,7 +404,7 @@ pub fn get_ledger_view() -> LinearLayout {
                     .child(
                         TextView::new(
                             StyledString::styled(
-                                "usb://ledger?key=1",
+                                "usb://ledger?key=0",
                                 ColorStyle::new(
                                     Color::Dark(BaseColor::White),
                                     Color::Dark(BaseColor::Blue)
@@ -420,7 +420,7 @@ pub fn get_ledger_view() -> LinearLayout {
             .child(
                 LinearLayout::horizontal()
                     .child(
-                        Button::new("▼ Select x' (1)", show_vote_account_select)
+                        Button::new("▼ Select x' (0)", show_vote_account_select)
                             .with_name("vote_x_button")
                             .fixed_width(20)
                     )
@@ -434,7 +434,7 @@ pub fn get_ledger_view() -> LinearLayout {
                     .child(
                         TextView::new(
                             StyledString::styled(
-                                "usb://ledger?key=1/0",
+                                "usb://ledger?key=0/0",
                                 ColorStyle::new(
                                     Color::Dark(BaseColor::White),
                                     Color::Dark(BaseColor::Blue)
