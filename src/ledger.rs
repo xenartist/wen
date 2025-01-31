@@ -372,6 +372,19 @@ pub fn get_ledger_view() -> LinearLayout {
         LinearLayout::vertical()
             .child(Button::new("Connect Ledger", connect_ledger))
             .child(DummyView.fixed_height(1))
+            // Add derivation path example
+            .child(
+                TextView::new(
+                    StyledString::styled(
+                        "Sample Derivation Path: m/44'/501'/x'/y'",
+                        ColorStyle::new(
+                            Color::Dark(BaseColor::Yellow),
+                            Color::Dark(BaseColor::Black)
+                        )
+                    )
+                )
+            )
+            .child(DummyView.fixed_height(1))
             // VAULT KEY section
             .child(TextView::new("VAULT (ID/WITHDRAW) KEY:"))
             .child(
