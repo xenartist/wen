@@ -257,10 +257,16 @@ fn show_vote_account_select(s: &mut Cursive) {
     select.set_selection(current_value);
 
     select.set_on_submit(move |s, account: &String| {
-        // Update x button and path
+        // Update x button
+        update_vote_x_button_text(s, account);
+        
+        // Reset y to default value (0)
+        update_vote_y_button_text(s, "0");
+
+        // Update path text with new x and default y
         s.call_on_name("vote_path_text", |view: &mut TextView| {
             let styled_text = StyledString::styled(
-                format!("usb://ledger?key={}", account),
+                format!("usb://ledger?key={}/0", account),
                 ColorStyle::new(
                     Color::Dark(BaseColor::White),
                     Color::Dark(BaseColor::Blue)
@@ -268,11 +274,7 @@ fn show_vote_account_select(s: &mut Cursive) {
             );
             view.set_content(styled_text);
         });
-        update_vote_x_button_text(s, account);
-        
-        // Reset y value to N/A
-        update_vote_y_button_text(s, "N/A");
-        
+
         s.pop_layer();
     });
 
