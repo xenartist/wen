@@ -379,6 +379,184 @@ fn show_pubkey(s: &mut Cursive, path_view_name: &str, pubkey_view_name: &str) {
     }
 }
 
+// Add helper function to create stake key section
+fn create_stake_key_section(
+    index: usize,
+    default_y: usize,
+) -> LinearLayout {
+    LinearLayout::vertical()
+        .child(TextView::new(format!("STAKE KEY {}:", index)))
+        .child(
+            LinearLayout::horizontal()
+                .child(
+                    Button::new("▼ Select x' (0)", move |s| {
+                        show_stake_account_select(s, index);
+                    })
+                    .with_name(format!("stake{}_x_button", index))
+                    .fixed_width(20)
+                )
+                .child(DummyView.fixed_width(1))
+                .child(
+                    Button::new(format!("▼ Select y' ({})", default_y), move |s| {
+                        show_stake_address_select(s, index);
+                    })
+                    .with_name(format!("stake{}_y_button", index))
+                    .fixed_width(20)
+                )
+                .child(DummyView.fixed_width(1))
+                .child(
+                    TextView::new(
+                        StyledString::styled(
+                            format!("usb://ledger?key=0/{}", default_y),
+                            ColorStyle::new(
+                                Color::Dark(BaseColor::White),
+                                Color::Dark(BaseColor::Blue)
+                            )
+                        )
+                    )
+                    .with_name(format!("stake{}_path_text", index))
+                )
+                .child(DummyView.fixed_width(1))
+                .child(
+                    Button::new("Show Pub Key", move |s| {
+                        show_pubkey(s, 
+                            &format!("stake{}_path_text", index),
+                            &format!("stake{}_pubkey_text", index)
+                        );
+                    })
+                    .fixed_width(15)
+                )
+                .child(DummyView.fixed_width(1))
+                .child(TextView::new("").with_name(format!("stake{}_pubkey_text", index)))
+        )
+}
+
+// Add functions for stake account selection
+fn show_stake_account_select(s: &mut Cursive, stake_index: usize) {
+    let mut select = SelectView::new()
+        .h_align(cursive::align::HAlign::Left)
+        .autojump();
+    
+    let current_value = s.call_on_name(&format!("stake{}_x_button", stake_index), |button: &mut Button| {
+        let label = button.label().to_string();
+        if let Some(num_str) = label.chars()
+            .filter(|c| c.is_digit(10))
+            .collect::<String>()
+            .parse::<usize>()
+            .ok() 
+        {
+            num_str
+        } else {
+            0
+        }
+    }).unwrap_or(0);
+    
+    select.add_item("Account 0", "0".to_string());
+    select.add_item("Account 1", "1".to_string());
+    select.add_item("Account 2", "2".to_string());
+    
+    select.set_selection(current_value);
+
+    let stake_index = stake_index.clone();
+    select.set_on_submit(move |s, account: &String| {
+        update_stake_x_button_text(s, stake_index, account);
+        update_stake_path(s, stake_index);
+        s.pop_layer();
+    });
+
+    s.add_layer(
+        Dialog::around(select)
+            .title(format!("Select Account Index (x') for Stake {}", stake_index))
+            .button("Cancel", |s| { s.pop_layer(); })
+    );
+}
+
+fn show_stake_address_select(s: &mut Cursive, stake_index: usize) {
+    let mut select = SelectView::new()
+        .h_align(cursive::align::HAlign::Left)
+        .autojump();
+    
+    let current_value = s.call_on_name(&format!("stake{}_y_button", stake_index), |button: &mut Button| {
+        let label = button.label().to_string();
+        if let Some(num_str) = label.chars()
+            .filter(|c| c.is_digit(10))
+            .collect::<String>()
+            .parse::<usize>()
+            .ok() 
+        {
+            num_str
+        } else {
+            stake_index
+        }
+    }).unwrap_or(stake_index);
+    
+    select.add_item("Address 0", "0".to_string());
+    select.add_item("Address 1", "1".to_string());
+    select.add_item("Address 2", "2".to_string());
+    select.add_item("Address 3", "3".to_string());
+    select.add_item("Address 4", "4".to_string());
+    select.add_item("Address 5", "5".to_string());
+    
+    select.set_selection(current_value);
+
+    let stake_index = stake_index.clone();
+    select.set_on_submit(move |s, address: &String| {
+        update_stake_y_button_text(s, stake_index, address);
+        update_stake_path(s, stake_index);
+        s.pop_layer();
+    });
+
+    s.add_layer(
+        Dialog::around(select)
+            .title(format!("Select Address Index (y') for Stake {}", stake_index))
+            .button("Cancel", |s| { s.pop_layer(); })
+    );
+}
+
+// Helper functions for updating stake buttons and path
+fn update_stake_x_button_text(s: &mut Cursive, stake_index: usize, value: &str) {
+    let new_label = format!("▼ Select x' ({})", value);
+    s.call_on_name(&format!("stake{}_x_button", stake_index), |view: &mut Button| {
+        view.set_label(new_label);
+    });
+}
+
+fn update_stake_y_button_text(s: &mut Cursive, stake_index: usize, value: &str) {
+    let new_label = format!("▼ Select y' ({})", value);
+    s.call_on_name(&format!("stake{}_y_button", stake_index), |view: &mut Button| {
+        view.set_label(new_label);
+    });
+}
+
+fn update_stake_path(s: &mut Cursive, stake_index: usize) {
+    let x_value = s.call_on_name(&format!("stake{}_x_button", stake_index), |button: &mut Button| {
+        button.label()
+            .strip_prefix("▼ Select x' (")
+            .and_then(|s| s.strip_suffix(")"))
+            .unwrap_or("0")
+            .to_string()
+    }).unwrap_or_else(|| "0".to_string());
+
+    let y_value = s.call_on_name(&format!("stake{}_y_button", stake_index), |button: &mut Button| {
+        button.label()
+            .strip_prefix("▼ Select y' (")
+            .and_then(|s| s.strip_suffix(")"))
+            .unwrap_or(&stake_index.to_string())
+            .to_string()
+    }).unwrap_or_else(|| stake_index.to_string());
+
+    s.call_on_name(&format!("stake{}_path_text", stake_index), |view: &mut TextView| {
+        let styled_text = StyledString::styled(
+            format!("usb://ledger?key={}/{}", x_value, y_value),
+            ColorStyle::new(
+                Color::Dark(BaseColor::White),
+                Color::Dark(BaseColor::Blue)
+            )
+        );
+        view.set_content(styled_text);
+    });
+}
+
 // Create and return the validator view layout
 pub fn get_ledger_view() -> LinearLayout {
     let dashboard = Panel::new(LinearLayout::vertical())
@@ -483,6 +661,16 @@ pub fn get_ledger_view() -> LinearLayout {
                     .child(TextView::new("").with_name("vote_pubkey_text"))
             )
             .child(DummyView.fixed_height(1))
+            // Add STAKE KEYs
+            .child(create_stake_key_section(1, 1))
+            .child(DummyView.fixed_height(1))
+            .child(create_stake_key_section(2, 2))
+            .child(DummyView.fixed_height(1))
+            .child(create_stake_key_section(3, 3))
+            .child(DummyView.fixed_height(1))
+            .child(create_stake_key_section(4, 4))
+            .child(DummyView.fixed_height(1))
+            .child(create_stake_key_section(5, 5))
     )
     .title("Config")
     .full_width()
