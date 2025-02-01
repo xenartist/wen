@@ -647,6 +647,15 @@ pub fn get_ledger_view() -> LinearLayout {
         LinearLayout::vertical()
             .child(Button::new("Connect Ledger", connect_ledger))
             .child(DummyView.fixed_height(1))
+            // Add validator selector
+            .child(
+                LinearLayout::horizontal()
+                    .child(TextView::new("Select Validator: "))
+                    .child(Button::new("▼ Validator (0)", show_validator_select)
+                        .with_name("validator_button")
+                        .fixed_width(20))
+            )
+            .child(DummyView.fixed_height(1))
             .child(
                 TextView::new(
                     StyledString::styled(
@@ -782,4 +791,106 @@ fn on_wallet_path_select(s: &mut Cursive, path: &str) {
     s.call_on_name("wallet_path_edit", |view: &mut EditView| {
         view.set_content(path);
     });
+}
+
+// Add function to show validator select dialog
+fn show_validator_select(s: &mut Cursive) {
+    let mut select = SelectView::new()
+        .h_align(cursive::align::HAlign::Left)
+        .autojump();
+    
+    let current_value = s.call_on_name("validator_button", |button: &mut Button| {
+        let label = button.label().to_string();
+        if let Some(num_str) = label.chars()
+            .filter(|c| c.is_digit(10))
+            .collect::<String>()
+            .parse::<usize>()
+            .ok() 
+        {
+            num_str
+        } else {
+            0
+        }
+    }).unwrap_or(0);
+    
+    // Add validator options (0-9)
+    for i in 0..10 {
+        select.add_item(format!("Validator {}", i), i.to_string());
+    }
+    
+    select.set_selection(current_value);
+
+    select.set_on_submit(move |s, validator: &String| {
+        // Update validator button text
+        s.call_on_name("validator_button", |view: &mut Button| {
+            view.set_label(format!("▼ Validator ({})", validator));
+        });
+        
+        // Update all x buttons with new default value
+        s.call_on_name("x_button", |view: &mut Button| {
+            view.set_label(format!("▼ Select x' ({})", validator));
+        });
+        s.call_on_name("vote_x_button", |view: &mut Button| {
+            view.set_label(format!("▼ Select x' ({})", validator));
+        });
+        
+        // Reset y buttons to default values
+        s.call_on_name("y_button", |view: &mut Button| {
+            view.set_label("▼ Select y' (N/A)");
+        });
+        s.call_on_name("vote_y_button", |view: &mut Button| {
+            view.set_label("▼ Select y' (0)");
+        });
+        
+        // Update stake buttons
+        for i in 1..=5 {
+            // Update x button
+            s.call_on_name(&format!("stake{}_x_button", i), |view: &mut Button| {
+                view.set_label(format!("▼ Select x' ({})", validator));
+            });
+            // Reset y button to default (index number)
+            s.call_on_name(&format!("stake{}_y_button", i), |view: &mut Button| {
+                view.set_label(format!("▼ Select y' ({})", i));
+            });
+        }
+        
+        // Update all paths with new x value and default y values
+        s.call_on_name("wallet_path_text", |view: &mut TextView| {
+            view.set_content(StyledString::styled(
+                format!("usb://ledger?key={}", validator),
+                ColorStyle::new(
+                    Color::Dark(BaseColor::White),
+                    Color::Dark(BaseColor::Blue)
+                )
+            ));
+        });
+        s.call_on_name("vote_path_text", |view: &mut TextView| {
+            view.set_content(StyledString::styled(
+                format!("usb://ledger?key={}/0", validator),
+                ColorStyle::new(
+                    Color::Dark(BaseColor::White),
+                    Color::Dark(BaseColor::Blue)
+                )
+            ));
+        });
+        for i in 1..=5 {
+            s.call_on_name(&format!("stake{}_path_text", i), |view: &mut TextView| {
+                view.set_content(StyledString::styled(
+                    format!("usb://ledger?key={}/{}", validator, i),
+                    ColorStyle::new(
+                        Color::Dark(BaseColor::White),
+                        Color::Dark(BaseColor::Blue)
+                    )
+                ));
+            });
+        }
+
+        s.pop_layer();
+    });
+
+    s.add_layer(
+        Dialog::around(select)
+            .title("Select Validator")
+            .button("Cancel", |s| { s.pop_layer(); })
+    );
 }
