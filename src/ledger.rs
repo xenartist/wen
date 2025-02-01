@@ -119,9 +119,10 @@ fn show_account_select(s: &mut Cursive) {
         }
     }).unwrap_or(0);
     
-    select.add_item("Account 0", "0".to_string());
-    select.add_item("Account 1", "1".to_string());
-    select.add_item("Account 2", "2".to_string());
+    // Add 10 account options
+    for i in 0..10 {
+        select.add_item(format!("Account {}", i), i.to_string());
+    }
     
     select.set_selection(current_value);
 
@@ -157,28 +158,25 @@ fn show_address_select(s: &mut Cursive) {
         .h_align(cursive::align::HAlign::Left)
         .autojump();
     
-    // Get current y' value first
     let current_value = s.call_on_name("y_button", |button: &mut Button| {
         let label = button.label().to_string();
-        // Try different ways to get the value
-        let value = label.chars()
-            .filter(|c| c.is_digit(10) || *c == 'N')
-            .collect::<String>();
-        
-        if value == "N" || value == "NA" {
-            0  // Index for "N/A" option
-        } else if let Ok(num) = value.parse::<usize>() {
-            num + 1  // Add 1 because "N/A" is at index 0
+        if let Some(num_str) = label.chars()
+            .filter(|c| c.is_digit(10))
+            .collect::<String>()
+            .parse::<usize>()
+            .ok() 
+        {
+            num_str + 1  // Add 1 to account for N/A option
         } else {
-            0
+            0  // Select N/A
         }
     }).unwrap_or(0);
     
-    // Add items
-    select.add_item("N/A (no address index)", "N/A".to_string());
-    select.add_item("Address 0", "0".to_string());
-    select.add_item("Address 1", "1".to_string());
-    select.add_item("Address 2", "2".to_string());
+    // Add N/A and 10 account options
+    select.add_item("N/A", "N/A".to_string());
+    for i in 0..10 {
+        select.add_item(format!("Account {}", i), i.to_string());
+    }
     
     select.set_selection(current_value);
 
@@ -250,9 +248,10 @@ fn show_vote_account_select(s: &mut Cursive) {
         }
     }).unwrap_or(0);
     
-    select.add_item("Account 0", "0".to_string());
-    select.add_item("Account 1", "1".to_string());
-    select.add_item("Account 2", "2".to_string());
+    // Add 10 account options
+    for i in 0..10 {
+        select.add_item(format!("Account {}", i), i.to_string());
+    }
     
     select.set_selection(current_value);
 
@@ -290,26 +289,25 @@ fn show_vote_address_select(s: &mut Cursive) {
         .h_align(cursive::align::HAlign::Left)
         .autojump();
     
-    // Get current y' value first
     let current_value = s.call_on_name("vote_y_button", |button: &mut Button| {
         let label = button.label().to_string();
-        // Try different ways to get the value
-        let value = label.chars()
+        if let Some(num_str) = label.chars()
             .filter(|c| c.is_digit(10))
-            .collect::<String>();
-        
-        if let Ok(num) = value.parse::<usize>() {
-            num + 1  // Add 1 because "N/A" is at index 0
+            .collect::<String>()
+            .parse::<usize>()
+            .ok() 
+        {
+            num_str + 1  // Add 1 to account for N/A option
         } else {
-            1  // Default to index 1 (Address 0) for vote key
+            0  // Select N/A
         }
-    }).unwrap_or(1);
+    }).unwrap_or(0);
     
-    // Add items
-    select.add_item("N/A (no address index)", "N/A".to_string());
-    select.add_item("Address 0", "0".to_string());
-    select.add_item("Address 1", "1".to_string());
-    select.add_item("Address 2", "2".to_string());
+    // Add N/A and 10 account options
+    select.add_item("N/A", "N/A".to_string());
+    for i in 0..10 {
+        select.add_item(format!("Account {}", i), i.to_string());
+    }
     
     select.set_selection(current_value);
 
@@ -491,9 +489,10 @@ fn show_stake_account_select(s: &mut Cursive, stake_index: usize) {
         }
     }).unwrap_or(0);
     
-    select.add_item("Account 0", "0".to_string());
-    select.add_item("Account 1", "1".to_string());
-    select.add_item("Account 2", "2".to_string());
+    // Add 10 account options
+    for i in 0..10 {
+        select.add_item(format!("Account {}", i), i.to_string());
+    }
     
     select.set_selection(current_value);
 
@@ -533,7 +532,6 @@ fn show_stake_address_select(s: &mut Cursive, stake_index: usize) {
         .h_align(cursive::align::HAlign::Left)
         .autojump();
     
-    // Get current y value
     let current_value = s.call_on_name(&format!("stake{}_y_button", stake_index), |button: &mut Button| {
         let label = button.label().to_string();
         if let Some(num_str) = label.chars()
@@ -542,18 +540,17 @@ fn show_stake_address_select(s: &mut Cursive, stake_index: usize) {
             .parse::<usize>()
             .ok() 
         {
-            num_str
+            num_str + 1  // Add 1 to account for N/A option
         } else {
-            stake_index
+            0  // Select N/A
         }
-    }).unwrap_or(stake_index);
+    }).unwrap_or(0);
     
-    select.add_item("Address 0", "0".to_string());
-    select.add_item("Address 1", "1".to_string());
-    select.add_item("Address 2", "2".to_string());
-    select.add_item("Address 3", "3".to_string());
-    select.add_item("Address 4", "4".to_string());
-    select.add_item("Address 5", "5".to_string());
+    // Add N/A and 10 account options
+    select.add_item("N/A", "N/A".to_string());
+    for i in 0..10 {
+        select.add_item(format!("Account {}", i), i.to_string());
+    }
     
     select.set_selection(current_value);
 
