@@ -830,14 +830,14 @@ fn show_validator_select(s: &mut Cursive) {
     select.set_selection(current_value);
 
     select.set_on_submit(move |s, validator: &String| {
-        // Get current validator name
-        let validator_name = s.call_on_name("validator_name", |view: &mut EditView| {
-            view.get_content().to_string()
-        }).unwrap_or_default();
-
         // Update validator button text
         s.call_on_name("validator_button", |view: &mut Button| {
             view.set_label(format!("▼ Validator ({})", validator));
+        });
+        
+        // Reset validator name to empty
+        s.call_on_name("validator_name", |view: &mut EditView| {
+            view.set_content("");
         });
         
         // Update all x buttons with new default value
@@ -899,8 +899,8 @@ fn show_validator_select(s: &mut Cursive) {
             });
         }
 
-        // Log the change with validator name
-        update_logs(s, &format!("Switched to Validator {} ({})", validator, validator_name));
+        // Log the change
+        update_logs(s, &format!("Switched to Validator {}", validator));
 
         s.pop_layer();
     });
