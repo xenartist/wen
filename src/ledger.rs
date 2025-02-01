@@ -363,74 +363,113 @@ fn get_pubkey(path: &str) -> Result<String, String> {
     }
 }
 
-// Add this function to handle button click
-fn show_pubkey(s: &mut Cursive, path_view_name: &str, pubkey_view_name: &str) {
+// Add function to get balance
+fn get_balance(key: &str) -> Result<f64, String> {
+    let output = Command::new("solana")
+        .arg("balance")
+        .arg("-k")
+        .arg(key)
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
+        let balance_str = String::from_utf8_lossy(&output.stdout)
+            .trim()
+            .replace(" SOL", "");
+        
+        balance_str.parse::<f64>()
+            .map_err(|e| e.to_string())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).to_string())
+    }
+}
+
+// Update show_pubkey function to also show balance
+fn show_pubkey(s: &mut Cursive, path_view_name: &str, pubkey_view_name: &str, balance_view_name: &str) {
     if let Some(path) = s.call_on_name(path_view_name, |view: &mut TextView| {
         view.get_content().source().to_string()
     }) {
+        update_logs(s, &format!("Getting pubkey for path: {}", path));
+        
         match get_pubkey(&path) {
             Ok(pubkey) => {
+                update_logs(s, &format!("Got pubkey: {}", pubkey));
+                
+                // Update pubkey
                 s.call_on_name(pubkey_view_name, |view: &mut TextView| {
-                    view.set_content(pubkey);
+                    view.set_content(pubkey.clone());
                 });
-            }
+                
+                // Get and update balance
+                match get_balance(&path) {
+                    Ok(balance) => {
+                        let balance_text = format!("{:.9} XNT", balance);
+                        update_logs(s, &format!("Got balance: {}", balance_text));
+                        
+                        s.call_on_name(balance_view_name, |view: &mut TextView| {
+                            view.set_content(balance_text);
+                        });
+                    },
+                    Err(err) => {
+                        update_logs(s, &format!("Failed to get balance: {}", err));
+                        s.call_on_name(balance_view_name, |view: &mut TextView| {
+                            view.set_content("Error".to_string());
+                        });
+                    }
+                }
+            },
             Err(err) => {
-                update_logs(s, &format!("Failed to get public key: {} \nPlease check if the ledger is connected, unlocked and the Solana app is open.", err));
+                update_logs(s, &format!("Failed to get public key: {}", err));
             }
         }
     }
 }
 
 // Add helper function to create stake key section
-fn create_stake_key_section(
-    index: usize,
-    default_y: usize,
-) -> LinearLayout {
-    LinearLayout::vertical()
-        .child(TextView::new(format!("STAKE KEY {}:", index)))
+fn create_stake_key_section(index: usize, default_y: usize) -> LinearLayout {
+    LinearLayout::horizontal()
         .child(
-            LinearLayout::horizontal()
-                .child(
-                    Button::new("▼ Select x' (0)", move |s| {
-                        show_stake_account_select(s, index);
-                    })
-                    .with_name(format!("stake{}_x_button", index))
-                    .fixed_width(20)
-                )
-                .child(DummyView.fixed_width(1))
-                .child(
-                    Button::new(format!("▼ Select y' ({})", default_y), move |s| {
-                        show_stake_address_select(s, index);
-                    })
-                    .with_name(format!("stake{}_y_button", index))
-                    .fixed_width(20)
-                )
-                .child(DummyView.fixed_width(1))
-                .child(
-                    TextView::new(
-                        StyledString::styled(
-                            format!("usb://ledger?key=0/{}", default_y),
-                            ColorStyle::new(
-                                Color::Dark(BaseColor::White),
-                                Color::Dark(BaseColor::Blue)
-                            )
-                        )
-                    )
-                    .with_name(format!("stake{}_path_text", index))
-                )
-                .child(DummyView.fixed_width(1))
-                .child(
-                    Button::new("Show Pub Key", move |s| {
-                        show_pubkey(s, 
-                            &format!("stake{}_path_text", index),
-                            &format!("stake{}_pubkey_text", index)
-                        );
-                    })
-                    .fixed_width(15)
-                )
-                .child(DummyView.fixed_width(1))
-                .child(TextView::new("").with_name(format!("stake{}_pubkey_text", index)))
+            Button::new("▼ Select x' (0)", move |s| {
+                show_stake_account_select(s, index);
+            })
+            .with_name(format!("stake{}_x_button", index))
+            .fixed_width(20)
         )
+        .child(DummyView.fixed_width(1))
+        .child(
+            Button::new(format!("▼ Select y' ({})", default_y), move |s| {
+                show_stake_address_select(s, index);
+            })
+            .with_name(format!("stake{}_y_button", index))
+            .fixed_width(20)
+        )
+        .child(DummyView.fixed_width(1))
+        .child(
+            TextView::new(
+                StyledString::styled(
+                    format!("usb://ledger?key=0/{}", default_y),
+                    ColorStyle::new(
+                        Color::Dark(BaseColor::White),
+                        Color::Dark(BaseColor::Blue)
+                    )
+                )
+            )
+            .with_name(format!("stake{}_path_text", index))
+        )
+        .child(DummyView.fixed_width(1))
+        .child(
+            Button::new("Show Pub Key", move |s| {
+                show_pubkey(
+                    s,
+                    &format!("stake{}_path_text", index),
+                    &format!("stake{}_pubkey_text", index),
+                    &format!("stake{}_balance", index)
+                );
+            })
+            .fixed_width(15)
+        )
+        .child(DummyView.fixed_width(1))
+        .child(TextView::new("").with_name(format!("stake{}_pubkey_text", index)))
 }
 
 // Add functions for stake account selection
@@ -608,7 +647,6 @@ pub fn get_ledger_view() -> LinearLayout {
         .fixed_height(5)
         .with_name("dashboard");
 
-    // Create config section with full height
     let config = Panel::new(
         LinearLayout::vertical()
             .child(Button::new("Connect Ledger", connect_ledger))
@@ -625,99 +663,119 @@ pub fn get_ledger_view() -> LinearLayout {
                 )
             )
             .child(DummyView.fixed_height(1))
-            .child(TextView::new("VAULT (ID/WITHDRAW) KEY:"))
+            // VAULT KEY section
             .child(
                 LinearLayout::horizontal()
-                    .child(
-                        Button::new("▼ Select x' (0)", show_account_select)
-                            .with_name("x_button")
-                            .fixed_width(20)
-                    )
+                    .child(TextView::new("VAULT (ID/WITHDRAW) KEY:"))
                     .child(DummyView.fixed_width(1))
-                    .child(
-                        Button::new("▼ Select y' (N/A)", show_address_select)
-                            .with_name("y_button")
-                            .fixed_width(20)
-                    )
+                    .child(TextView::new("").with_name("vault_balance").fixed_width(20))
+            )
+            .child(
+                LinearLayout::horizontal()
+                    .child(Button::new("▼ Select x' (0)", show_account_select)
+                        .with_name("x_button")
+                        .fixed_width(20))
                     .child(DummyView.fixed_width(1))
-                    .child(
-                        TextView::new(
-                            StyledString::styled(
-                                "usb://ledger?key=0",
-                                ColorStyle::new(
-                                    Color::Dark(BaseColor::White),
-                                    Color::Dark(BaseColor::Blue)
-                                )
+                    .child(Button::new("▼ Select y' (N/A)", show_address_select)
+                        .with_name("y_button")
+                        .fixed_width(20))
+                    .child(DummyView.fixed_width(1))
+                    .child(TextView::new(
+                        StyledString::styled(
+                            "usb://ledger?key=0",
+                            ColorStyle::new(
+                                Color::Dark(BaseColor::White),
+                                Color::Dark(BaseColor::Blue)
                             )
                         )
-                        .with_name("wallet_path_text")
-                    )
+                    ).with_name("wallet_path_text"))
                     .child(DummyView.fixed_width(1))
-                    .child(
-                        Button::new("Show Pub Key", move |s| {
-                            show_pubkey(s, "wallet_path_text", "wallet_pubkey_text");
-                        })
-                        .fixed_width(15)
-                    )
+                    .child(Button::new("Show Pub Key", move |s| {
+                        show_pubkey(s, "wallet_path_text", "wallet_pubkey_text", "vault_balance");
+                    }).fixed_width(15))
                     .child(DummyView.fixed_width(1))
                     .child(TextView::new("").with_name("wallet_pubkey_text"))
             )
             .child(DummyView.fixed_height(1))
-            // Add VOTE KEY section
-            .child(TextView::new("VOTE KEY:"))
+            // VOTE KEY section
             .child(
                 LinearLayout::horizontal()
-                    .child(
-                        Button::new("▼ Select x' (0)", show_vote_account_select)
-                            .with_name("vote_x_button")
-                            .fixed_width(20)
-                    )
+                    .child(TextView::new("VOTE KEY:"))
                     .child(DummyView.fixed_width(1))
-                    .child(
-                        Button::new("▼ Select y' (0)", show_vote_address_select)
-                            .with_name("vote_y_button")
-                            .fixed_width(20)
-                    )
+                    .child(TextView::new("").with_name("vote_balance").fixed_width(20))
+            )
+            .child(
+                LinearLayout::horizontal()
+                    .child(Button::new("▼ Select x' (0)", show_vote_account_select)
+                        .with_name("vote_x_button")
+                        .fixed_width(20))
                     .child(DummyView.fixed_width(1))
-                    .child(
-                        TextView::new(
-                            StyledString::styled(
-                                "usb://ledger?key=0/0",
-                                ColorStyle::new(
-                                    Color::Dark(BaseColor::White),
-                                    Color::Dark(BaseColor::Blue)
-                                )
+                    .child(Button::new("▼ Select y' (0)", show_vote_address_select)
+                        .with_name("vote_y_button")
+                        .fixed_width(20))
+                    .child(DummyView.fixed_width(1))
+                    .child(TextView::new(
+                        StyledString::styled(
+                            "usb://ledger?key=0/0",
+                            ColorStyle::new(
+                                Color::Dark(BaseColor::White),
+                                Color::Dark(BaseColor::Blue)
                             )
                         )
-                        .with_name("vote_path_text")
-                    )
+                    ).with_name("vote_path_text"))
                     .child(DummyView.fixed_width(1))
-                    .child(
-                        Button::new("Show Pub Key", move |s| {
-                            show_pubkey(s, "vote_path_text", "vote_pubkey_text");
-                        })
-                        .fixed_width(15)
-                    )
+                    .child(Button::new("Show Pub Key", move |s| {
+                        show_pubkey(s, "vote_path_text", "vote_pubkey_text", "vote_balance");
+                    }).fixed_width(15))
                     .child(DummyView.fixed_width(1))
                     .child(TextView::new("").with_name("vote_pubkey_text"))
             )
             .child(DummyView.fixed_height(1))
-            // Add STAKE KEYs
+            // STAKE KEYs
+            .child(
+                LinearLayout::horizontal()
+                    .child(TextView::new("STAKE KEY 1:"))
+                    .child(DummyView.fixed_width(1))
+                    .child(TextView::new("").with_name("stake1_balance").fixed_width(20))
+            )
             .child(create_stake_key_section(1, 1))
             .child(DummyView.fixed_height(1))
+            .child(
+                LinearLayout::horizontal()
+                    .child(TextView::new("STAKE KEY 2:"))
+                    .child(DummyView.fixed_width(1))
+                    .child(TextView::new("").with_name("stake2_balance").fixed_width(20))
+            )
             .child(create_stake_key_section(2, 2))
             .child(DummyView.fixed_height(1))
+            .child(
+                LinearLayout::horizontal()
+                    .child(TextView::new("STAKE KEY 3:"))
+                    .child(DummyView.fixed_width(1))
+                    .child(TextView::new("").with_name("stake3_balance").fixed_width(20))
+            )
             .child(create_stake_key_section(3, 3))
             .child(DummyView.fixed_height(1))
+            .child(
+                LinearLayout::horizontal()
+                    .child(TextView::new("STAKE KEY 4:"))
+                    .child(DummyView.fixed_width(1))
+                    .child(TextView::new("").with_name("stake4_balance").fixed_width(20))
+            )
             .child(create_stake_key_section(4, 4))
             .child(DummyView.fixed_height(1))
+            .child(
+                LinearLayout::horizontal()
+                    .child(TextView::new("STAKE KEY 5:"))
+                    .child(DummyView.fixed_width(1))
+                    .child(TextView::new("").with_name("stake5_balance").fixed_width(20))
+            )
             .child(create_stake_key_section(5, 5))
     )
     .title("Configuration")
     .full_width()
-    .full_height();  // Changed from fixed height to full height
+    .full_height();
 
-    // Create logs panel with scrollable text view
     let logs = Panel::new(
         ScrollView::new(
             TextView::new("")
@@ -731,7 +789,7 @@ pub fn get_ledger_view() -> LinearLayout {
 
     LinearLayout::vertical()
         .child(dashboard)
-        .child(config)     // Config panel will now expand to fill available space
+        .child(config)
         .child(logs)
 }
 
