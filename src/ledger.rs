@@ -657,9 +657,8 @@ pub fn get_ledger_view() -> LinearLayout {
                     .child(DummyView.fixed_width(1))
                     .child(TextView::new("Name: "))
                     .child(EditView::new()
-                        .on_edit(|s, _text, _cursor| {
-                            // Optional: Add any validation or real-time processing here
-                            update_logs(s, "Validator name updated");
+                        .on_edit(|_s, _text, _cursor| {
+                            // Remove the log message
                         })
                         .with_name("validator_name")
                         .fixed_width(30))
