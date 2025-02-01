@@ -647,13 +647,22 @@ pub fn get_ledger_view() -> LinearLayout {
         LinearLayout::vertical()
             .child(Button::new("Connect Ledger", connect_ledger))
             .child(DummyView.fixed_height(1))
-            // Add validator selector
+            // Add validator selector and name input
             .child(
                 LinearLayout::horizontal()
                     .child(TextView::new("Select Validator: "))
                     .child(Button::new("▼ Validator (0)", show_validator_select)
                         .with_name("validator_button")
                         .fixed_width(20))
+                    .child(DummyView.fixed_width(1))
+                    .child(TextView::new("Name: "))
+                    .child(EditView::new()
+                        .on_edit(|s, _text, _cursor| {
+                            // Optional: Add any validation or real-time processing here
+                            update_logs(s, "Validator name updated");
+                        })
+                        .with_name("validator_name")
+                        .fixed_width(30))
             )
             .child(DummyView.fixed_height(1))
             .child(
@@ -821,6 +830,11 @@ fn show_validator_select(s: &mut Cursive) {
     select.set_selection(current_value);
 
     select.set_on_submit(move |s, validator: &String| {
+        // Get current validator name
+        let validator_name = s.call_on_name("validator_name", |view: &mut EditView| {
+            view.get_content().to_string()
+        }).unwrap_or_default();
+
         // Update validator button text
         s.call_on_name("validator_button", |view: &mut Button| {
             view.set_label(format!("▼ Validator ({})", validator));
@@ -884,6 +898,9 @@ fn show_validator_select(s: &mut Cursive) {
                 ));
             });
         }
+
+        // Log the change with validator name
+        update_logs(s, &format!("Switched to Validator {} ({})", validator, validator_name));
 
         s.pop_layer();
     });
