@@ -427,49 +427,48 @@ fn show_pubkey(s: &mut Cursive, path_view_name: &str, pubkey_view_name: &str, ba
 
 // Add helper function to create stake key section
 fn create_stake_key_section(index: usize, default_y: usize) -> LinearLayout {
-    LinearLayout::horizontal()
+    LinearLayout::vertical()
         .child(
-            Button::new("▼ Select x' (0)", move |s| {
-                show_stake_account_select(s, index);
-            })
-            .with_name(format!("stake{}_x_button", index))
-            .fixed_width(20)
+            LinearLayout::horizontal()
+                .child(TextView::new(format!("STAKE KEY {}:", index)))
+                .child(DummyView.fixed_width(1))
+                .child(TextView::new("").with_name(format!("stake{}_balance", index)).fixed_width(20))
+                .child(DummyView.fixed_width(1))
+                .child(TextView::new("").with_name(format!("stake{}_pubkey_text", index)))
         )
-        .child(DummyView.fixed_width(1))
         .child(
-            Button::new(format!("▼ Select y' ({})", default_y), move |s| {
-                show_stake_address_select(s, index);
-            })
-            .with_name(format!("stake{}_y_button", index))
-            .fixed_width(20)
-        )
-        .child(DummyView.fixed_width(1))
-        .child(
-            TextView::new(
-                StyledString::styled(
-                    format!("usb://ledger?key=0/{}", default_y),
-                    ColorStyle::new(
-                        Color::Dark(BaseColor::White),
-                        Color::Dark(BaseColor::Blue)
+            LinearLayout::horizontal()
+                .child(Button::new("▼ Select x' (0)", move |s| {
+                    show_stake_account_select(s, index);
+                })
+                .with_name(format!("stake{}_x_button", index))
+                .fixed_width(20))
+                .child(DummyView.fixed_width(1))
+                .child(Button::new(format!("▼ Select y' ({})", default_y), move |s| {
+                    show_stake_address_select(s, index);
+                })
+                .with_name(format!("stake{}_y_button", index))
+                .fixed_width(20))
+                .child(DummyView.fixed_width(1))
+                .child(TextView::new(
+                    StyledString::styled(
+                        format!("usb://ledger?key=0/{}", default_y),
+                        ColorStyle::new(
+                            Color::Dark(BaseColor::White),
+                            Color::Dark(BaseColor::Blue)
+                        )
                     )
-                )
-            )
-            .with_name(format!("stake{}_path_text", index))
+                ).with_name(format!("stake{}_path_text", index)))
+                .child(DummyView.fixed_width(1))
+                .child(Button::new("Show Balance & PubKey", move |s| {
+                    show_pubkey(
+                        s,
+                        &format!("stake{}_path_text", index),
+                        &format!("stake{}_pubkey_text", index),
+                        &format!("stake{}_balance", index)
+                    );
+                }).fixed_width(25))  // Increased width to accommodate longer text
         )
-        .child(DummyView.fixed_width(1))
-        .child(
-            Button::new("Show Pub Key", move |s| {
-                show_pubkey(
-                    s,
-                    &format!("stake{}_path_text", index),
-                    &format!("stake{}_pubkey_text", index),
-                    &format!("stake{}_balance", index)
-                );
-            })
-            .fixed_width(15)
-        )
-        .child(DummyView.fixed_width(1))
-        .child(TextView::new("").with_name(format!("stake{}_pubkey_text", index)))
 }
 
 // Add functions for stake account selection
@@ -669,6 +668,8 @@ pub fn get_ledger_view() -> LinearLayout {
                     .child(TextView::new("VAULT (ID/WITHDRAW) KEY:"))
                     .child(DummyView.fixed_width(1))
                     .child(TextView::new("").with_name("vault_balance").fixed_width(20))
+                    .child(DummyView.fixed_width(1))
+                    .child(TextView::new("").with_name("wallet_pubkey_text"))
             )
             .child(
                 LinearLayout::horizontal()
@@ -690,11 +691,9 @@ pub fn get_ledger_view() -> LinearLayout {
                         )
                     ).with_name("wallet_path_text"))
                     .child(DummyView.fixed_width(1))
-                    .child(Button::new("Show Pub Key", move |s| {
+                    .child(Button::new("Show Balance & PubKey", move |s| {
                         show_pubkey(s, "wallet_path_text", "wallet_pubkey_text", "vault_balance");
-                    }).fixed_width(15))
-                    .child(DummyView.fixed_width(1))
-                    .child(TextView::new("").with_name("wallet_pubkey_text"))
+                    }).fixed_width(25))  // Increased width to accommodate longer text
             )
             .child(DummyView.fixed_height(1))
             // VOTE KEY section
@@ -703,6 +702,8 @@ pub fn get_ledger_view() -> LinearLayout {
                     .child(TextView::new("VOTE KEY:"))
                     .child(DummyView.fixed_width(1))
                     .child(TextView::new("").with_name("vote_balance").fixed_width(20))
+                    .child(DummyView.fixed_width(1))
+                    .child(TextView::new("").with_name("vote_pubkey_text"))
             )
             .child(
                 LinearLayout::horizontal()
@@ -724,52 +725,20 @@ pub fn get_ledger_view() -> LinearLayout {
                         )
                     ).with_name("vote_path_text"))
                     .child(DummyView.fixed_width(1))
-                    .child(Button::new("Show Pub Key", move |s| {
+                    .child(Button::new("Show Balance & PubKey", move |s| {
                         show_pubkey(s, "vote_path_text", "vote_pubkey_text", "vote_balance");
-                    }).fixed_width(15))
-                    .child(DummyView.fixed_width(1))
-                    .child(TextView::new("").with_name("vote_pubkey_text"))
+                    }).fixed_width(25))  // Increased width to accommodate longer text
             )
             .child(DummyView.fixed_height(1))
             // STAKE KEYs
-            .child(
-                LinearLayout::horizontal()
-                    .child(TextView::new("STAKE KEY 1:"))
-                    .child(DummyView.fixed_width(1))
-                    .child(TextView::new("").with_name("stake1_balance").fixed_width(20))
-            )
             .child(create_stake_key_section(1, 1))
             .child(DummyView.fixed_height(1))
-            .child(
-                LinearLayout::horizontal()
-                    .child(TextView::new("STAKE KEY 2:"))
-                    .child(DummyView.fixed_width(1))
-                    .child(TextView::new("").with_name("stake2_balance").fixed_width(20))
-            )
             .child(create_stake_key_section(2, 2))
             .child(DummyView.fixed_height(1))
-            .child(
-                LinearLayout::horizontal()
-                    .child(TextView::new("STAKE KEY 3:"))
-                    .child(DummyView.fixed_width(1))
-                    .child(TextView::new("").with_name("stake3_balance").fixed_width(20))
-            )
             .child(create_stake_key_section(3, 3))
             .child(DummyView.fixed_height(1))
-            .child(
-                LinearLayout::horizontal()
-                    .child(TextView::new("STAKE KEY 4:"))
-                    .child(DummyView.fixed_width(1))
-                    .child(TextView::new("").with_name("stake4_balance").fixed_width(20))
-            )
             .child(create_stake_key_section(4, 4))
             .child(DummyView.fixed_height(1))
-            .child(
-                LinearLayout::horizontal()
-                    .child(TextView::new("STAKE KEY 5:"))
-                    .child(DummyView.fixed_width(1))
-                    .child(TextView::new("").with_name("stake5_balance").fixed_width(20))
-            )
             .child(create_stake_key_section(5, 5))
     )
     .title("Configuration")
