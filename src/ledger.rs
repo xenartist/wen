@@ -608,12 +608,11 @@ pub fn get_ledger_view() -> LinearLayout {
         .fixed_height(5)
         .with_name("dashboard");
 
-    // Create config section
+    // Create config section with full height
     let config = Panel::new(
         LinearLayout::vertical()
             .child(Button::new("Connect Ledger", connect_ledger))
             .child(DummyView.fixed_height(1))
-            // Add derivation path example
             .child(
                 TextView::new(
                     StyledString::styled(
@@ -626,7 +625,6 @@ pub fn get_ledger_view() -> LinearLayout {
                 )
             )
             .child(DummyView.fixed_height(1))
-            // VAULT KEY section
             .child(TextView::new("VAULT (ID/WITHDRAW) KEY:"))
             .child(
                 LinearLayout::horizontal()
@@ -715,26 +713,26 @@ pub fn get_ledger_view() -> LinearLayout {
             .child(DummyView.fixed_height(1))
             .child(create_stake_key_section(5, 5))
     )
-    .title("Config")
+    .title("Configuration")
     .full_width()
-    .min_height(10);
+    .full_height();  // Changed from fixed height to full height
 
+    // Create logs panel with scrollable text view
     let logs = Panel::new(
-        ScrollView::new(TextView::new(""))
-            .scroll_strategy(cursive::view::ScrollStrategy::StickToBottom)
+        ScrollView::new(
+            TextView::new("")
+                .with_name("logs")
+                .full_width()
+        )
     )
     .title("Logs")
-    .with_name("log_view")
     .full_width()
-    .min_height(8);
+    .fixed_height(10);
 
-    // Combine sections vertically
-    let layout = LinearLayout::vertical()
+    LinearLayout::vertical()
         .child(dashboard)
-        .child(config)
-        .child(logs);
-    
-    layout
+        .child(config)     // Config panel will now expand to fill available space
+        .child(logs)
 }
 
 // Clean ANSI escape sequences from log message
@@ -743,13 +741,15 @@ fn clean_log_message(message: &str) -> String {
 }
 
 // Update the logs panel with new content
-fn update_logs(siv: &mut Cursive, message: &str) {
-    // Clean ANSI escape sequences before displaying
-    let clean_message = clean_log_message(message);
-    
-    siv.call_on_name("log_view", |view: &mut Panel<ScrollView<TextView>>| {
-        view.get_inner_mut().get_inner_mut().append(&clean_message);
-        view.get_inner_mut().get_inner_mut().append("\n");
+fn update_logs(s: &mut Cursive, message: &str) {
+    s.call_on_name("logs", |view: &mut TextView| {
+        let current_content = view.get_content().source().to_string();
+        let new_content = if current_content.is_empty() {
+            message.to_string()
+        } else {
+            format!("{}\n{}", current_content, message)
+        };
+        view.set_content(new_content);
     });
 }
 
