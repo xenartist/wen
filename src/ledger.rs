@@ -751,11 +751,9 @@ pub fn get_ledger_view() -> LinearLayout {
     .full_height();
 
     let logs = Panel::new(
-        ScrollView::new(
-            TextView::new("")
-                .with_name("logs")
-                .full_width()
-        )
+        ScrollView::new(TextView::new(""))
+            .scroll_strategy(cursive::view::ScrollStrategy::StickToBottom)
+            .with_name("logs")
     )
     .title("Logs")
     .full_width()
@@ -774,14 +772,12 @@ fn clean_log_message(message: &str) -> String {
 
 // Update the logs panel with new content
 fn update_logs(s: &mut Cursive, message: &str) {
-    s.call_on_name("logs", |view: &mut TextView| {
-        let current_content = view.get_content().source().to_string();
-        let new_content = if current_content.is_empty() {
-            message.to_string()
-        } else {
-            format!("{}\n{}", current_content, message)
-        };
-        view.set_content(new_content);
+    // Clean ANSI escape sequences before displaying
+    let clean_message = clean_log_message(message);
+    
+    s.call_on_name("logs", |view: &mut ScrollView<TextView>| {
+        view.get_inner_mut().append(&clean_message);
+        view.get_inner_mut().append("\n");
     });
 }
 
