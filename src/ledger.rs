@@ -16,6 +16,7 @@ use cursive::theme::{BaseColor, Color, Style, ColorStyle};
 use cursive::utils::markup::StyledString;
 use std::path::PathBuf;
 use cursive::views::NamedView;
+use clipboard::{ClipboardContext, ClipboardProvider};
 
 // Add a constant for maximum log lines
 const MAX_LOG_LINES: usize = 100;
@@ -465,7 +466,23 @@ fn create_stake_key_section(index: usize, default_y: usize) -> LinearLayout {
                         &format!("stake{}_pubkey_text", index),
                         &format!("stake{}_balance", index)
                     );
-                }).fixed_width(25))  // Increased width to accommodate longer text
+                }).fixed_width(25))
+                .child(DummyView.fixed_width(1))
+                .child(Button::new("Copy PubKey", move |s| {
+                    if let Some(pubkey) = s.call_on_name(&format!("stake{}_pubkey_text", index), |view: &mut TextView| {
+                        view.get_content().source().to_string()
+                    }) {
+                        if !pubkey.is_empty() {
+                            if let Ok(mut ctx) = ClipboardContext::new() {
+                                if ctx.set_contents(pubkey.clone()).is_ok() {
+                                    update_logs(s, &format!("Stake {} PubKey copied to clipboard", index));
+                                } else {
+                                    update_logs(s, &format!("Failed to copy Stake {} PubKey to clipboard", index));
+                                }
+                            }
+                        }
+                    }
+                }).fixed_width(15))
         )
 }
 
@@ -698,9 +715,25 @@ pub fn get_ledger_view() -> LinearLayout {
                     .child(DummyView.fixed_width(1))
                     .child(Button::new("Show Balance & PubKey", move |s| {
                         show_pubkey(s, "wallet_path_text", "wallet_pubkey_text", "vault_balance");
-                    }).fixed_width(25))  // Increased width to accommodate longer text
+                    }).fixed_width(25))
+                    .child(DummyView.fixed_width(1))
+                    .child(Button::new("Copy PubKey", |s| {
+                        if let Some(pubkey) = s.call_on_name("wallet_pubkey_text", |view: &mut TextView| {
+                            view.get_content().source().to_string()
+                        }) {
+                            if !pubkey.is_empty() {
+                                if let Ok(mut ctx) = ClipboardContext::new() {
+                                    if ctx.set_contents(pubkey.clone()).is_ok() {
+                                        update_logs(s, "Vault PubKey copied to clipboard");
+                                    } else {
+                                        update_logs(s, "Failed to copy Vault PubKey to clipboard");
+                                    }
+                                }
+                            }
+                        }
+                    }).fixed_width(15))
             )
-            .child(DummyView.fixed_height(1))
+            .child(DummyView.fixed_height(2))
             // VOTE KEY section
             .child(
                 LinearLayout::horizontal()
@@ -732,9 +765,25 @@ pub fn get_ledger_view() -> LinearLayout {
                     .child(DummyView.fixed_width(1))
                     .child(Button::new("Show Balance & PubKey", move |s| {
                         show_pubkey(s, "vote_path_text", "vote_pubkey_text", "vote_balance");
-                    }).fixed_width(25))  // Increased width to accommodate longer text
+                    }).fixed_width(25))
+                    .child(DummyView.fixed_width(1))
+                    .child(Button::new("Copy PubKey", |s| {
+                        if let Some(pubkey) = s.call_on_name("vote_pubkey_text", |view: &mut TextView| {
+                            view.get_content().source().to_string()
+                        }) {
+                            if !pubkey.is_empty() {
+                                if let Ok(mut ctx) = ClipboardContext::new() {
+                                    if ctx.set_contents(pubkey.clone()).is_ok() {
+                                        update_logs(s, "Vote PubKey copied to clipboard");
+                                    } else {
+                                        update_logs(s, "Failed to copy Vote PubKey to clipboard");
+                                    }
+                                }
+                            }
+                        }
+                    }).fixed_width(15))
             )
-            .child(DummyView.fixed_height(1))
+            .child(DummyView.fixed_height(2))
             // STAKE KEYs
             .child(create_stake_key_section(1, 1))
             .child(DummyView.fixed_height(1))
