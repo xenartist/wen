@@ -647,21 +647,13 @@ pub fn get_ledger_view() -> LinearLayout {
         LinearLayout::vertical()
             .child(Button::new("Connect Ledger", connect_ledger))
             .child(DummyView.fixed_height(1))
-            // Add validator selector and name input
+            // Simplified validator selector
             .child(
                 LinearLayout::horizontal()
                     .child(TextView::new("Select Validator: "))
                     .child(Button::new("▼ Validator (0)", show_validator_select)
                         .with_name("validator_button")
                         .fixed_width(20))
-                    .child(DummyView.fixed_width(1))
-                    .child(TextView::new("Name: "))
-                    .child(EditView::new()
-                        .on_edit(|_s, _text, _cursor| {
-                            // Remove the log message
-                        })
-                        .with_name("validator_name")
-                        .fixed_width(30))
             )
             .child(DummyView.fixed_height(1))
             .child(
@@ -675,7 +667,6 @@ pub fn get_ledger_view() -> LinearLayout {
                     )
                 )
             )
-            .child(DummyView.fixed_height(1))
             // VAULT KEY section
             .child(
                 LinearLayout::horizontal()
@@ -834,9 +825,15 @@ fn show_validator_select(s: &mut Cursive) {
             view.set_label(format!("▼ Validator ({})", validator));
         });
         
-        // Reset validator name to empty
+        // Reset validator name to empty and ensure it's disabled
         s.call_on_name("validator_name", |view: &mut EditView| {
             view.set_content("");
+            view.disable();  // Disable editing
+        });
+        
+        // Reset edit button to "Edit"
+        s.call_on_name("name_edit_button", |button: &mut Button| {
+            button.set_label("Edit");
         });
         
         // Update all x buttons with new default value
@@ -909,4 +906,30 @@ fn show_validator_select(s: &mut Cursive) {
             .title("Select Validator")
             .button("Cancel", |s| { s.pop_layer(); })
     );
+}
+
+// Add function to toggle between edit and save modes
+fn toggle_name_edit(s: &mut Cursive) {
+    let is_edit_mode = s.call_on_name("name_edit_button", |button: &mut Button| {
+        button.label() == "Edit"
+    }).unwrap_or(false);
+
+    if is_edit_mode {
+        // Switch to Save mode
+        s.call_on_name("name_edit_button", |button: &mut Button| {
+            button.set_label("Save");
+        });
+        s.call_on_name("validator_name", |view: &mut EditView| {
+            view.enable();  // Enable editing
+            view.take_focus(cursive::direction::Direction::none()).unwrap();
+        });
+    } else {
+        // Switch to Edit mode
+        s.call_on_name("name_edit_button", |button: &mut Button| {
+            button.set_label("Edit");
+        });
+        s.call_on_name("validator_name", |view: &mut EditView| {
+            view.disable();  // Disable editing
+        });
+    }
 }
