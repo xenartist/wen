@@ -821,6 +821,33 @@ fn show_validator_select(s: &mut Cursive) {
             view.set_label(format!("▼ Validator ({})", validator));
         });
         
+        // Clear all balances and pubkeys
+        // Clear vault key info
+        s.call_on_name("vault_balance", |view: &mut TextView| {
+            view.set_content("");
+        });
+        s.call_on_name("wallet_pubkey_text", |view: &mut TextView| {
+            view.set_content("");
+        });
+        
+        // Clear vote key info
+        s.call_on_name("vote_balance", |view: &mut TextView| {
+            view.set_content("");
+        });
+        s.call_on_name("vote_pubkey_text", |view: &mut TextView| {
+            view.set_content("");
+        });
+        
+        // Clear stake keys info
+        for i in 1..=5 {
+            s.call_on_name(&format!("stake{}_balance", i), |view: &mut TextView| {
+                view.set_content("");
+            });
+            s.call_on_name(&format!("stake{}_pubkey_text", i), |view: &mut TextView| {
+                view.set_content("");
+            });
+        }
+
         // Reset validator name to empty and ensure it's disabled
         s.call_on_name("validator_name", |view: &mut EditView| {
             view.set_content("");
