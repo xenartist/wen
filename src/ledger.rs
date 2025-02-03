@@ -754,7 +754,7 @@ pub fn get_ledger_view() -> LinearLayout {
     let dashboard = Panel::new(LinearLayout::vertical())
         .title("Dashboard")
         .full_width()
-        .fixed_height(5)
+        .fixed_height(2)
         .with_name("dashboard");
 
     let config = Panel::new(
