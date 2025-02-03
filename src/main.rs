@@ -36,6 +36,9 @@ fn menu_selected(siv: &mut Cursive, item: &str) {
 }
 
 fn main() {
+    // Initialize ledger configuration
+    ledger::setup_ledger();
+
     // Initialize the cursive interface
     let mut siv = cursive::default();
     
