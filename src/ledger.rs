@@ -578,7 +578,7 @@ fn create_stake_key_section(index: usize, default_y: usize) -> LinearLayout {
                 }).fixed_width(15))
                 .child(DummyView.fixed_width(1))
                 .child(Button::new("Transfer XNT", move |s| {
-                    update_logs(s, &format!("Initiating XNT transfer from Stake Key {}...", index));
+                    show_transfer_dialog(s, "stake", Some(index));
                 }).fixed_width(15))
         )
 }
@@ -765,9 +765,9 @@ pub fn get_ledger_view() -> LinearLayout {
             .child(
                 LinearLayout::horizontal()
                     .child(TextView::new("Select Validator: "))
-                    .child(Button::new("▼ Validator (0)", show_validator_select)
-                        .with_name("validator_button")
-                        .fixed_width(20))
+                        .child(Button::new("▼ Validator (0)", show_validator_select)
+                            .with_name("validator_button")
+                            .fixed_width(20))
             )
             .child(DummyView.fixed_height(1))
             .child(
@@ -835,7 +835,7 @@ pub fn get_ledger_view() -> LinearLayout {
                             }).fixed_width(15))
                             .child(DummyView.fixed_width(1))
                             .child(Button::new("Transfer XNT", |s| {
-                                update_logs(s, "Initiating XNT transfer from Vault Key...");
+                                show_transfer_dialog(s, "vault", None);
                             }).fixed_width(15))
                     )
             )
@@ -894,7 +894,7 @@ pub fn get_ledger_view() -> LinearLayout {
                             }).fixed_width(15))
                             .child(DummyView.fixed_width(1))
                             .child(Button::new("Transfer XNT", |s| {
-                                update_logs(s, "Initiating XNT transfer from Vote Key...");
+                                show_transfer_dialog(s, "vote", None);
                             }).fixed_width(15))
                     )
             )
@@ -1118,5 +1118,165 @@ fn toggle_name_edit(s: &mut Cursive) {
         s.call_on_name("validator_name", |view: &mut EditView| {
             view.disable();  // Disable editing
         });
+    }
+}
+
+// Add transfer dialog function
+fn show_transfer_dialog(s: &mut Cursive, source_type: &str, source_index: Option<usize>) {
+    let source_type = source_type.to_string();  // Convert to owned String at the start
+    let title = match source_type.as_str() {
+        "vault" => "Vault Key".to_string(),
+        "vote" => "Vote Key".to_string(),
+        "stake" => format!("Stake Key {}", source_index.unwrap_or(0)),
+        _ => "Unknown Key".to_string()
+    };
+
+    let dialog = Dialog::new()
+        .title(format!("Transfer XNT from {}", title))
+        .content(
+            LinearLayout::vertical()
+                .child(TextView::new("Recipient Address:"))
+                .child(EditView::new()
+                    .with_name("recipient_address")
+                    .fixed_width(64))
+                .child(DummyView.fixed_height(1))
+                .child(TextView::new("Amount (XNT):"))
+                .child(EditView::new()
+                    .with_name("transfer_amount")
+                    .fixed_width(20))
+        )
+        .button("Cancel", |s| { s.pop_layer(); })
+        .button("Transfer", {
+            let source_type = source_type.clone();  // Clone before moving into closure
+            move |s| {
+                let recipient = s.call_on_name("recipient_address", |view: &mut EditView| {
+                    view.get_content().to_string()
+                }).unwrap_or_default();
+                
+                let amount = s.call_on_name("transfer_amount", |view: &mut EditView| {
+                    view.get_content().to_string()
+                }).unwrap_or_default();
+
+                // Validate inputs
+                if recipient.is_empty() || amount.is_empty() {
+                    show_error_dialog(s, "Please fill in all fields");
+                    return;
+                }
+
+                // Validate amount format
+                match amount.parse::<f64>() {
+                    Ok(amount) if amount <= 0.0 => {
+                        show_error_dialog(s, "Amount must be greater than 0");
+                        return;
+                    }
+                    Err(_) => {
+                        show_error_dialog(s, "Invalid amount format");
+                        return;
+                    }
+                    _ => {}
+                }
+
+                // Get source path based on key type
+                let path = match source_type.as_str() {
+                    "vault" => s.call_on_name("wallet_path_text", |view: &mut TextView| {
+                        view.get_content().source().to_string()
+                    }),
+                    "vote" => s.call_on_name("vote_path_text", |view: &mut TextView| {
+                        view.get_content().source().to_string()
+                    }),
+                    "stake" => s.call_on_name(&format!("stake{}_path_text", source_index.unwrap_or(0)), |view: &mut TextView| {
+                        view.get_content().source().to_string()
+                    }),
+                    _ => None
+                }.unwrap_or_default();
+
+                // Show confirmation dialog
+                show_transfer_confirmation(s, &path, &recipient, &amount, source_type.clone(), source_index);
+            }
+        });
+
+    s.add_layer(dialog);
+}
+
+// Add confirmation dialog
+fn show_transfer_confirmation(s: &mut Cursive, from_path: &str, to_address: &str, amount: &str, source_type: String, source_index: Option<usize>) {
+    let source_type = source_type.clone();  // Clone before moving into closure
+    let from_path = from_path.to_string();
+    let to_address = to_address.to_string();
+    let amount = amount.to_string();
+
+    let dialog = Dialog::new()
+        .title("Confirm Transfer")
+        .content(
+            LinearLayout::vertical()
+                .child(TextView::new("Please confirm the transfer details:"))
+                .child(DummyView.fixed_height(1))
+                .child(TextView::new(format!("From: {}", from_path)))
+                .child(TextView::new(format!("To: {}", to_address)))
+                .child(TextView::new(format!("Amount: {} XNT", amount)))
+        )
+        .button("Cancel", |s| { s.pop_layer(); })
+        .button("Confirm", move |s| {
+            s.pop_layer();  // Close confirmation dialog
+            s.pop_layer();  // Close transfer dialog
+            execute_transfer(s, &from_path, &to_address, &amount, &source_type, source_index);
+        });
+
+    s.add_layer(dialog);
+}
+
+// Add error dialog
+fn show_error_dialog(s: &mut Cursive, message: &str) {
+    s.add_layer(
+        Dialog::new()
+            .title("Error")
+            .content(TextView::new(message))
+            .button("OK", |s| { s.pop_layer(); })
+    );
+}
+
+// Execute transfer
+fn execute_transfer(s: &mut Cursive, from_path: &str, to_address: &str, amount: &str, source_type: &str, source_index: Option<usize>) {
+    update_logs(s, &format!("Executing transfer of {} XNT from {} to {}", amount, from_path, to_address));
+
+    // Execute solana transfer command
+    let output = Command::new("solana")
+        .arg("transfer")
+        .arg("--from")
+        .arg(from_path)
+        .arg(to_address)
+        .arg(amount)
+        .arg("--allow-unfunded-recipient")
+        .output();
+
+    match output {
+        Ok(output) => {
+            if output.status.success() {
+                update_logs(s, "✓ Transfer completed successfully!");
+                
+                // Refresh balance after transfer
+                match source_type {
+                    "vault" => show_pubkey(s, "wallet_path_text", "wallet_pubkey_text", "vault_balance"),
+                    "vote" => show_pubkey(s, "vote_path_text", "vote_pubkey_text", "vote_balance"),
+                    "stake" => {
+                        if let Some(index) = source_index {
+                            show_pubkey(
+                                s,
+                                &format!("stake{}_path_text", index),
+                                &format!("stake{}_pubkey_text", index),
+                                &format!("stake{}_balance", index)
+                            );
+                        }
+                    },
+                    _ => {}
+                }
+            } else {
+                let error = String::from_utf8_lossy(&output.stderr);
+                update_logs(s, &format!("✗ Transfer failed: {}", error));
+            }
+        }
+        Err(e) => {
+            update_logs(s, &format!("✗ Error executing transfer command: {}", e));
+        }
     }
 }
