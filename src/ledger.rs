@@ -1302,7 +1302,7 @@ fn execute_transfer(s: &mut Cursive, from_path: &str, to_address: &str, amount: 
     // Execute solana transfer command
     let output = Command::new("solana")
         .arg("transfer")
-        .arg("--from")
+        .arg("--keypair")
         .arg(from_path)
         .arg(to_address)
         .arg(amount)
