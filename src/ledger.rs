@@ -735,160 +735,162 @@ pub fn get_ledger_view() -> LinearLayout {
         .with_name("dashboard");
 
     let config = Panel::new(
-        LinearLayout::vertical()
-            // Simplified validator selector
-            .child(
-                LinearLayout::horizontal()
-                    .child(TextView::new("Select Validator: "))
-                        .child(Button::new("▼ Validator (0)", show_validator_select)
-                            .with_name("validator_button")
-                            .fixed_width(20))
-            )
-            .child(DummyView.fixed_height(1))
-            .child(
-                TextView::new(
-                    StyledString::styled(
-                        "Sample Derivation Path: m/44'/501'/x'/y'",
-                        ColorStyle::new(
-                            Color::Dark(BaseColor::Yellow),
-                            Color::Dark(BaseColor::Black)
+        ScrollView::new(
+            LinearLayout::vertical()
+                // Simplified validator selector
+                .child(
+                    LinearLayout::horizontal()
+                        .child(TextView::new("Select Validator: "))
+                            .child(Button::new("▼ Validator (0)", show_validator_select)
+                                .with_name("validator_button")
+                                .fixed_width(20))
+                )
+                .child(DummyView.fixed_height(1))
+                .child(
+                    TextView::new(
+                        StyledString::styled(
+                            "Sample Derivation Path: m/44'/501'/x'/y'",
+                            ColorStyle::new(
+                                Color::Dark(BaseColor::Yellow),
+                                Color::Dark(BaseColor::Black)
+                            )
                         )
                     )
                 )
-            )
-            // VAULT KEY section with panel
-            .child(Panel::new(
-                LinearLayout::vertical()
-                    .child(
-                        LinearLayout::horizontal()
-                            .child(TextView::new("VAULT (ID/WITHDRAW) KEY:"))
-                            .child(DummyView.fixed_width(1))
-                            .child(TextView::new("").with_name("wallet_pubkey_text"))
-                            .child(DummyView.fixed_width(1))
-                            .child(TextView::new("").with_name("vault_balance").fixed_width(20))
-                    )
-                    .child(
-                        LinearLayout::horizontal()
-                            .child(Button::new("▼ Select x' (0)", show_account_select)
-                                .with_name("x_button")
-                                .fixed_width(20))
-                            .child(DummyView.fixed_width(1))
-                            .child(Button::new("▼ Select y' (N/A)", show_address_select)
-                                .with_name("y_button")
-                                .fixed_width(20))
-                            .child(DummyView.fixed_width(1))
-                            .child(TextView::new(
-                                StyledString::styled(
-                                    "usb://ledger?key=0",
-                                    ColorStyle::new(
-                                        Color::Dark(BaseColor::White),
-                                        Color::Dark(BaseColor::Blue)
+                // VAULT KEY section with panel
+                .child(Panel::new(
+                    LinearLayout::vertical()
+                        .child(
+                            LinearLayout::horizontal()
+                                .child(TextView::new("VAULT (ID/WITHDRAW) KEY:"))
+                                .child(DummyView.fixed_width(1))
+                                .child(TextView::new("").with_name("wallet_pubkey_text"))
+                                .child(DummyView.fixed_width(1))
+                                .child(TextView::new("").with_name("vault_balance").fixed_width(20))                          
+                        )
+                        .child(
+                            LinearLayout::horizontal()
+                                .child(Button::new("▼ Select x' (0)", show_account_select)
+                                    .with_name("x_button")
+                                    .fixed_width(20))
+                                .child(DummyView.fixed_width(1))
+                                .child(Button::new("▼ Select y' (N/A)", show_address_select)
+                                    .with_name("y_button")
+                                    .fixed_width(20))
+                                .child(DummyView.fixed_width(1))
+                                .child(TextView::new(
+                                    StyledString::styled(
+                                        "usb://ledger?key=0",
+                                        ColorStyle::new(
+                                            Color::Dark(BaseColor::White),
+                                            Color::Dark(BaseColor::Blue)
+                                        )
                                     )
-                                )
-                            ).with_name("wallet_path_text"))
-                    )
-                    .child(
-                        LinearLayout::horizontal()
-                            .child(Button::new("Show Balance & PubKey", move |s| {
-                                show_pubkey(s, "wallet_path_text", "wallet_pubkey_text", "vault_balance");
-                            }).fixed_width(25))
-                            .child(DummyView.fixed_width(1))
-                            .child(Button::new("Copy PubKey", |s| {
-                                if let Some(pubkey) = s.call_on_name("wallet_pubkey_text", |view: &mut TextView| {
-                                    view.get_content().source().to_string()
-                                }) {
-                                    if !pubkey.is_empty() {
-                                        if let Ok(mut ctx) = ClipboardContext::new() {
-                                            if ctx.set_contents(pubkey.clone()).is_ok() {
-                                                update_logs(s, "Vault PubKey copied to clipboard");
-                                            } else {
-                                                update_logs(s, "Failed to copy Vault PubKey to clipboard");
+                                ).with_name("wallet_path_text"))
+                        )
+                        .child(
+                            LinearLayout::horizontal()
+                                .child(Button::new("Show Balance & PubKey", move |s| {
+                                    show_pubkey(s, "wallet_path_text", "wallet_pubkey_text", "vault_balance");
+                                }).fixed_width(25))
+                                .child(DummyView.fixed_width(1))
+                                .child(Button::new("Copy PubKey", |s| {
+                                    if let Some(pubkey) = s.call_on_name("wallet_pubkey_text", |view: &mut TextView| {
+                                        view.get_content().source().to_string()
+                                    }) {
+                                        if !pubkey.is_empty() {
+                                            if let Ok(mut ctx) = ClipboardContext::new() {
+                                                if ctx.set_contents(pubkey.clone()).is_ok() {
+                                                    update_logs(s, "Vault PubKey copied to clipboard");
+                                                } else {
+                                                    update_logs(s, "Failed to copy Vault PubKey to clipboard");
+                                                }
                                             }
                                         }
                                     }
-                                }
-                            }).fixed_width(15))
-                            .child(DummyView.fixed_width(1))
-                            .child(Button::new("Transfer XNT", |s| {
-                                show_transfer_dialog(s, "vault", None);
-                            }).fixed_width(15))
-                    )
-            ))
-            // VOTE KEY section
-            .child(Panel::new(
-                LinearLayout::vertical()
-                    .child(
-                        LinearLayout::horizontal()
-                            .child(TextView::new("VOTE KEY:"))
-                            .child(DummyView.fixed_width(1))
-                            .child(TextView::new("").with_name("vote_pubkey_text"))
-                            .child(DummyView.fixed_width(1))
-                            .child(TextView::new("").with_name("vote_balance").fixed_width(20))
-                    )
-                    .child(
-                        LinearLayout::horizontal()
-                            .child(Button::new("▼ Select x' (0)", show_vote_account_select)
-                                .with_name("vote_x_button")
-                                .fixed_width(20))
-                            .child(DummyView.fixed_width(1))
-                            .child(Button::new("▼ Select y' (0)", show_vote_address_select)
-                                .with_name("vote_y_button")
-                                .fixed_width(20))
-                            .child(DummyView.fixed_width(1))
-                            .child(TextView::new(
-                                StyledString::styled(
-                                    "usb://ledger?key=0/0",
-                                    ColorStyle::new(
-                                        Color::Dark(BaseColor::White),
-                                        Color::Dark(BaseColor::Blue)
+                                }).fixed_width(15))
+                                .child(DummyView.fixed_width(1))
+                                .child(Button::new("Transfer XNT", |s| {
+                                    show_transfer_dialog(s, "vault", None);
+                                }).fixed_width(15))
+                        )
+                ))
+                // VOTE KEY section
+                .child(Panel::new(
+                    LinearLayout::vertical()
+                        .child(
+                            LinearLayout::horizontal()
+                                .child(TextView::new("VOTE KEY:"))
+                                .child(DummyView.fixed_width(1))
+                                .child(TextView::new("").with_name("vote_pubkey_text"))
+                                .child(DummyView.fixed_width(1))
+                                .child(TextView::new("").with_name("vote_balance").fixed_width(20))
+                        )
+                        .child(
+                            LinearLayout::horizontal()
+                                .child(Button::new("▼ Select x' (0)", show_vote_account_select)
+                                    .with_name("vote_x_button")
+                                    .fixed_width(20))
+                                .child(DummyView.fixed_width(1))
+                                .child(Button::new("▼ Select y' (0)", show_vote_address_select)
+                                    .with_name("vote_y_button")
+                                    .fixed_width(20))
+                                .child(DummyView.fixed_width(1))
+                                .child(TextView::new(
+                                    StyledString::styled(
+                                        "usb://ledger?key=0/0",
+                                        ColorStyle::new(
+                                            Color::Dark(BaseColor::White),
+                                            Color::Dark(BaseColor::Blue)
+                                        )
                                     )
-                                )
-                            ).with_name("vote_path_text"))
-                    )
-                    .child(
-                        LinearLayout::horizontal()
-                            .child(Button::new("Show Balance & PubKey", move |s| {
-                                show_pubkey(s, "vote_path_text", "vote_pubkey_text", "vote_balance");
-                            }).fixed_width(25))
-                            .child(DummyView.fixed_width(1))
-                            .child(Button::new("Copy PubKey", |s| {
-                                if let Some(pubkey) = s.call_on_name("vote_pubkey_text", |view: &mut TextView| {
-                                    view.get_content().source().to_string()
-                                }) {
-                                    if !pubkey.is_empty() {
-                                        if let Ok(mut ctx) = ClipboardContext::new() {
-                                            if ctx.set_contents(pubkey.clone()).is_ok() {
-                                                update_logs(s, "Vote PubKey copied to clipboard");
-                                            } else {
-                                                update_logs(s, "Failed to copy Vote PubKey to clipboard");
+                                ).with_name("vote_path_text"))
+                        )
+                        .child(
+                            LinearLayout::horizontal()
+                                .child(Button::new("Show Balance & PubKey", move |s| {
+                                    show_pubkey(s, "vote_path_text", "vote_pubkey_text", "vote_balance");
+                                }).fixed_width(25))
+                                .child(DummyView.fixed_width(1))
+                                .child(Button::new("Copy PubKey", |s| {
+                                    if let Some(pubkey) = s.call_on_name("vote_pubkey_text", |view: &mut TextView| {
+                                        view.get_content().source().to_string()
+                                    }) {
+                                        if !pubkey.is_empty() {
+                                            if let Ok(mut ctx) = ClipboardContext::new() {
+                                                if ctx.set_contents(pubkey.clone()).is_ok() {
+                                                    update_logs(s, "Vote PubKey copied to clipboard");
+                                                } else {
+                                                    update_logs(s, "Failed to copy Vote PubKey to clipboard");
+                                                }
                                             }
                                         }
                                     }
-                                }
-                            }).fixed_width(15))
-                            .child(DummyView.fixed_width(1))
-                            .child(Button::new("Transfer XNT", |s| {
-                                show_transfer_dialog(s, "vote", None);
-                            }).fixed_width(15))
-                    )
-            ))
-            // STAKE KEYs
-            .child(Panel::new(
-                LinearLayout::vertical()
-                    .child(create_stake_key_section(1, 1))
-                    .child(DummyView.fixed_height(2))
-                    .child(create_stake_key_section(2, 2))
-                    .child(DummyView.fixed_height(2))
-                    .child(create_stake_key_section(3, 3))
-                    .child(DummyView.fixed_height(2))
-                    .child(create_stake_key_section(4, 4))
-                    .child(DummyView.fixed_height(2))
-                    .child(create_stake_key_section(5, 5))
-            ))
+                                }).fixed_width(15))
+                                .child(DummyView.fixed_width(1))
+                                .child(Button::new("Transfer XNT", |s| {
+                                    show_transfer_dialog(s, "vote", None);
+                                }).fixed_width(15))
+                        )
+                ))
+                // STAKE KEYs
+                .child(Panel::new(
+                    LinearLayout::vertical()
+                        .child(create_stake_key_section(1, 1))
+                        .child(DummyView.fixed_height(2))
+                        .child(create_stake_key_section(2, 2))
+                        .child(DummyView.fixed_height(2))
+                        .child(create_stake_key_section(3, 3))
+                        .child(DummyView.fixed_height(2))
+                        .child(create_stake_key_section(4, 4))
+                        .child(DummyView.fixed_height(2))
+                        .child(create_stake_key_section(5, 5))
+                ))
+        )
     )
     .title("Configuration")
     .full_width()
-    .max_height(40);
+    .max_height(40);  // This will now be the height of the scrollable area
 
     let logs = Panel::new(
         ScrollView::new(TextView::new(""))
@@ -901,8 +903,8 @@ pub fn get_ledger_view() -> LinearLayout {
 
     LinearLayout::vertical()
         .child(dashboard)
-        .child(config)
-        .child(logs)
+        .child(ResizedView::with_full_screen(config))  // Make config take remaining space
+        .child(logs)  // Logs will always be visible at the bottom
 }
 
 // Clean ANSI escape sequences from log message
