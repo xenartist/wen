@@ -1142,10 +1142,44 @@ fn show_transfer_dialog(s: &mut Cursive, source_type: &str, source_index: Option
         _ => "Unknown Key".to_string()
     };
 
+    // Get source address and balance
+    let (source_address, source_balance) = match source_type.as_str() {
+        "vault" => (
+            s.call_on_name("wallet_pubkey_text", |view: &mut TextView| {
+                view.get_content().source().to_string()
+            }).unwrap_or_default(),
+            s.call_on_name("vault_balance", |view: &mut TextView| {
+                view.get_content().source().to_string()
+            }).unwrap_or_default()
+        ),
+        "vote" => (
+            s.call_on_name("vote_pubkey_text", |view: &mut TextView| {
+                view.get_content().source().to_string()
+            }).unwrap_or_default(),
+            s.call_on_name("vote_balance", |view: &mut TextView| {
+                view.get_content().source().to_string()
+            }).unwrap_or_default()
+        ),
+        "stake" => (
+            s.call_on_name(&format!("stake{}_pubkey_text", source_index.unwrap_or(0)), |view: &mut TextView| {
+                view.get_content().source().to_string()
+            }).unwrap_or_default(),
+            s.call_on_name(&format!("stake{}_balance", source_index.unwrap_or(0)), |view: &mut TextView| {
+                view.get_content().source().to_string()
+            }).unwrap_or_default()
+        ),
+        _ => (String::new(), String::new())
+    };
+
     let dialog = Dialog::new()
         .title(format!("Transfer XNT from {}", title))
         .content(
             LinearLayout::vertical()
+                .child(TextView::new("From Address:"))
+                .child(TextView::new(source_address.clone()))
+                .child(DummyView.fixed_height(1))
+                .child(TextView::new(format!("Available Balance: {}", source_balance)))
+                .child(DummyView.fixed_height(1))
                 .child(TextView::new("Recipient Address:"))
                 .child(EditView::new()
                     .with_name("recipient_address")
@@ -1216,13 +1250,28 @@ fn show_transfer_confirmation(s: &mut Cursive, from_path: &str, to_address: &str
     let to_address = to_address.to_string();
     let amount = amount.to_string();
 
+    // Get source pubkey
+    let from_pubkey = match source_type.as_str() {
+        "vault" => s.call_on_name("wallet_pubkey_text", |view: &mut TextView| {
+            view.get_content().source().to_string()
+        }),
+        "vote" => s.call_on_name("vote_pubkey_text", |view: &mut TextView| {
+            view.get_content().source().to_string()
+        }),
+        "stake" => s.call_on_name(&format!("stake{}_pubkey_text", source_index.unwrap_or(0)), |view: &mut TextView| {
+            view.get_content().source().to_string()
+        }),
+        _ => None
+    }.unwrap_or_default();
+
     let dialog = Dialog::new()
         .title("Confirm Transfer")
         .content(
             LinearLayout::vertical()
                 .child(TextView::new("Please confirm the transfer details:"))
                 .child(DummyView.fixed_height(1))
-                .child(TextView::new(format!("From: {}", from_path)))
+                .child(TextView::new(format!("From Path: {}", from_path)))
+                .child(TextView::new(format!("From PubKey: {}", from_pubkey)))
                 .child(TextView::new(format!("To: {}", to_address)))
                 .child(TextView::new(format!("Amount: {} XNT", amount)))
         )
