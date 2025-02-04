@@ -542,9 +542,12 @@ fn create_stake_key_section(index: usize, default_y: usize) -> LinearLayout {
                     if let Some(pubkey) = s.call_on_name(&format!("stake{}_pubkey_text", index), |view: &mut TextView| {
                         view.get_content().source().to_string()
                     }) {
-                        if !pubkey.is_empty() {
+                        if pubkey.is_empty() {
+                            update_logs(s, &format!("Please click 'Show PubKey & Balance' button first to get the Stake {} public key", index));
+                        } else {
                             if let Ok(mut ctx) = ClipboardContext::new() {
                                 if ctx.set_contents(pubkey.clone()).is_ok() {
+
                                     update_logs(s, &format!("Stake {} PubKey copied to clipboard", index));
                                 } else {
                                     update_logs(s, &format!("Failed to copy Stake {} PubKey to clipboard", index));
@@ -794,14 +797,16 @@ pub fn get_ledger_view() -> LinearLayout {
                                     show_pubkey(s, "wallet_path_text", "wallet_pubkey_text", "vault_balance");
                                 }).fixed_width(25))
                                 .child(DummyView.fixed_width(1))
-
                                 .child(Button::new("Copy PubKey", |s| {
                                     if let Some(pubkey) = s.call_on_name("wallet_pubkey_text", |view: &mut TextView| {
                                         view.get_content().source().to_string()
                                     }) {
-                                        if !pubkey.is_empty() {
+                                        if pubkey.is_empty() {
+                                            update_logs(s, "Please click 'Show PubKey & Balance' button first to get the public key");
+                                        } else {
                                             if let Ok(mut ctx) = ClipboardContext::new() {
                                                 if ctx.set_contents(pubkey.clone()).is_ok() {
+
                                                     update_logs(s, "Vault PubKey copied to clipboard");
                                                 } else {
                                                     update_logs(s, "Failed to copy Vault PubKey to clipboard");
@@ -852,15 +857,17 @@ pub fn get_ledger_view() -> LinearLayout {
                                 .child(Button::new("Show PubKey & Balance", move |s| {
                                     show_pubkey(s, "vote_path_text", "vote_pubkey_text", "vote_balance");
                                 }).fixed_width(25))
-
                                 .child(DummyView.fixed_width(1))
                                 .child(Button::new("Copy PubKey", |s| {
                                     if let Some(pubkey) = s.call_on_name("vote_pubkey_text", |view: &mut TextView| {
                                         view.get_content().source().to_string()
                                     }) {
-                                        if !pubkey.is_empty() {
+                                        if pubkey.is_empty() {
+                                            update_logs(s, "Please click 'Show PubKey & Balance' button first to get the public key");
+                                        } else {
                                             if let Ok(mut ctx) = ClipboardContext::new() {
                                                 if ctx.set_contents(pubkey.clone()).is_ok() {
+
                                                     update_logs(s, "Vote PubKey copied to clipboard");
                                                 } else {
                                                     update_logs(s, "Failed to copy Vote PubKey to clipboard");
