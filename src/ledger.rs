@@ -529,7 +529,7 @@ fn create_stake_key_section(index: usize, default_y: usize) -> LinearLayout {
         )
         .child(
             LinearLayout::horizontal()
-                .child(Button::new("Show Balance & PubKey", move |s| {
+                .child(Button::new("Show PubKey & Balance", move |s| {
                     show_pubkey(
                         s,
                         &format!("stake{}_path_text", index),
@@ -790,10 +790,11 @@ pub fn get_ledger_view() -> LinearLayout {
                         )
                         .child(
                             LinearLayout::horizontal()
-                                .child(Button::new("Show Balance & PubKey", move |s| {
+                                .child(Button::new("Show PubKey & Balance", move |s| {
                                     show_pubkey(s, "wallet_path_text", "wallet_pubkey_text", "vault_balance");
                                 }).fixed_width(25))
                                 .child(DummyView.fixed_width(1))
+
                                 .child(Button::new("Copy PubKey", |s| {
                                     if let Some(pubkey) = s.call_on_name("wallet_pubkey_text", |view: &mut TextView| {
                                         view.get_content().source().to_string()
@@ -848,9 +849,10 @@ pub fn get_ledger_view() -> LinearLayout {
                         )
                         .child(
                             LinearLayout::horizontal()
-                                .child(Button::new("Show Balance & PubKey", move |s| {
+                                .child(Button::new("Show PubKey & Balance", move |s| {
                                     show_pubkey(s, "vote_path_text", "vote_pubkey_text", "vote_balance");
                                 }).fixed_width(25))
+
                                 .child(DummyView.fixed_width(1))
                                 .child(Button::new("Copy PubKey", |s| {
                                     if let Some(pubkey) = s.call_on_name("vote_pubkey_text", |view: &mut TextView| {
