@@ -558,7 +558,15 @@ fn create_stake_key_section(index: usize, default_y: usize) -> LinearLayout {
                 }).fixed_width(15))
                 .child(DummyView.fixed_width(1))
                 .child(Button::new("Transfer XNT", move |s| {
-                    show_transfer_dialog(s, "stake", Some(index));
+                    if let Some(pubkey) = s.call_on_name(&format!("stake{}_pubkey_text", index), |view: &mut TextView| {
+                        view.get_content().source().to_string()
+                    }) {
+                        if pubkey.is_empty() {
+                            update_logs(s, &format!("Please click 'Show PubKey & Balance' button first to get the Stake {} public key and balance", index));
+                        } else {
+                            show_transfer_dialog(s, "stake", Some(index));
+                        }
+                    }
                 }).fixed_width(15))
         )
 }
@@ -817,7 +825,15 @@ pub fn get_ledger_view() -> LinearLayout {
                                 }).fixed_width(15))
                                 .child(DummyView.fixed_width(1))
                                 .child(Button::new("Transfer XNT", |s| {
-                                    show_transfer_dialog(s, "vault", None);
+                                    if let Some(pubkey) = s.call_on_name("wallet_pubkey_text", |view: &mut TextView| {
+                                        view.get_content().source().to_string()
+                                    }) {
+                                        if pubkey.is_empty() {
+                                            update_logs(s, "Please click 'Show PubKey & Balance' button first to get the public key and balance");
+                                        } else {
+                                            show_transfer_dialog(s, "vault", None);
+                                        }
+                                    }
                                 }).fixed_width(15))
                         )
                 ))
@@ -878,7 +894,15 @@ pub fn get_ledger_view() -> LinearLayout {
                                 }).fixed_width(15))
                                 .child(DummyView.fixed_width(1))
                                 .child(Button::new("Transfer XNT", |s| {
-                                    show_transfer_dialog(s, "vote", None);
+                                    if let Some(pubkey) = s.call_on_name("vote_pubkey_text", |view: &mut TextView| {
+                                        view.get_content().source().to_string()
+                                    }) {
+                                        if pubkey.is_empty() {
+                                            update_logs(s, "Please click 'Show PubKey & Balance' button first to get the public key and balance");
+                                        } else {
+                                            show_transfer_dialog(s, "vote", None);
+                                        }
+                                    }
                                 }).fixed_width(15))
                         )
                 ))
