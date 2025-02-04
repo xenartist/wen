@@ -121,30 +121,6 @@ fn update_logs_static(message: &str) {
     println!("{}", message);  // For now, just print to stdout
 }
 
-// Add this new function to handle ledger connection
-fn connect_ledger(s: &mut Cursive) {
-    let output = Command::new("solana")
-        .arg("address")
-        .arg("--keypair")
-        .arg("usb://ledger")
-        .output();
-
-    match output {
-        Ok(output) => {
-            if output.status.success() {
-                update_logs(s, "✓ Ledger connected successfully!");
-            } else {
-                let error = String::from_utf8_lossy(&output.stderr);
-                update_logs(s, &format!("✗ Failed to connect to Ledger: {}", error));
-                update_logs(s, &format!("Make sure your Ledger is connected, unlocked, and the Solana app is open."));
-            }
-        }
-        Err(e) => {
-            update_logs(s, &format!("✗ Error executing command: {}", e));
-        }
-    }
-}
-
 // Add these functions to update button texts
 fn update_x_button_text(s: &mut Cursive, value: &str) {
     let new_label = format!("▼ Select x' ({})", value);
@@ -510,6 +486,7 @@ fn show_pubkey(s: &mut Cursive, path_view_name: &str, pubkey_view_name: &str, ba
             },
             Err(err) => {
                 update_logs(s, &format!("Failed to get public key: {}", err));
+                update_logs(s, &format!("Make sure your Ledger is connected, unlocked, Solana app is open, and allowed blind signing."));
             }
         }
     }
@@ -522,9 +499,9 @@ fn create_stake_key_section(index: usize, default_y: usize) -> LinearLayout {
             LinearLayout::horizontal()
                 .child(TextView::new(format!("STAKE KEY {}:", index)))
                 .child(DummyView.fixed_width(1))
-                .child(TextView::new("").with_name(format!("stake{}_balance", index)).fixed_width(20))
-                .child(DummyView.fixed_width(1))
                 .child(TextView::new("").with_name(format!("stake{}_pubkey_text", index)))
+                .child(DummyView.fixed_width(1))
+                .child(TextView::new("").with_name(format!("stake{}_balance", index)).fixed_width(20))
         )
         .child(
             LinearLayout::horizontal()
@@ -759,8 +736,6 @@ pub fn get_ledger_view() -> LinearLayout {
 
     let config = Panel::new(
         LinearLayout::vertical()
-            .child(Button::new("Connect Ledger", connect_ledger))
-            .child(DummyView.fixed_height(1))
             // Simplified validator selector
             .child(
                 LinearLayout::horizontal()
@@ -781,16 +756,16 @@ pub fn get_ledger_view() -> LinearLayout {
                     )
                 )
             )
-            // VAULT KEY section
-            .child(
+            // VAULT KEY section with panel
+            .child(Panel::new(
                 LinearLayout::vertical()
                     .child(
                         LinearLayout::horizontal()
                             .child(TextView::new("VAULT (ID/WITHDRAW) KEY:"))
                             .child(DummyView.fixed_width(1))
-                            .child(TextView::new("").with_name("vault_balance").fixed_width(20))
-                            .child(DummyView.fixed_width(1))
                             .child(TextView::new("").with_name("wallet_pubkey_text"))
+                            .child(DummyView.fixed_width(1))
+                            .child(TextView::new("").with_name("vault_balance").fixed_width(20))
                     )
                     .child(
                         LinearLayout::horizontal()
@@ -838,18 +813,17 @@ pub fn get_ledger_view() -> LinearLayout {
                                 show_transfer_dialog(s, "vault", None);
                             }).fixed_width(15))
                     )
-            )
-            .child(DummyView.fixed_height(1))
+            ))
             // VOTE KEY section
-            .child(
+            .child(Panel::new(
                 LinearLayout::vertical()
                     .child(
                         LinearLayout::horizontal()
                             .child(TextView::new("VOTE KEY:"))
                             .child(DummyView.fixed_width(1))
-                            .child(TextView::new("").with_name("vote_balance").fixed_width(20))
-                            .child(DummyView.fixed_width(1))
                             .child(TextView::new("").with_name("vote_pubkey_text"))
+                            .child(DummyView.fixed_width(1))
+                            .child(TextView::new("").with_name("vote_balance").fixed_width(20))
                     )
                     .child(
                         LinearLayout::horizontal()
@@ -897,22 +871,24 @@ pub fn get_ledger_view() -> LinearLayout {
                                 show_transfer_dialog(s, "vote", None);
                             }).fixed_width(15))
                     )
-            )
-            .child(DummyView.fixed_height(1))
+            ))
             // STAKE KEYs
-            .child(create_stake_key_section(1, 1))
-            .child(DummyView.fixed_height(1))
-            .child(create_stake_key_section(2, 2))
-            .child(DummyView.fixed_height(1))
-            .child(create_stake_key_section(3, 3))
-            .child(DummyView.fixed_height(1))
-            .child(create_stake_key_section(4, 4))
-            .child(DummyView.fixed_height(1))
-            .child(create_stake_key_section(5, 5))
+            .child(Panel::new(
+                LinearLayout::vertical()
+                    .child(create_stake_key_section(1, 1))
+                    .child(DummyView.fixed_height(2))
+                    .child(create_stake_key_section(2, 2))
+                    .child(DummyView.fixed_height(2))
+                    .child(create_stake_key_section(3, 3))
+                    .child(DummyView.fixed_height(2))
+                    .child(create_stake_key_section(4, 4))
+                    .child(DummyView.fixed_height(2))
+                    .child(create_stake_key_section(5, 5))
+            ))
     )
     .title("Configuration")
     .full_width()
-    .full_height();
+    .max_height(40);
 
     let logs = Panel::new(
         ScrollView::new(TextView::new(""))
