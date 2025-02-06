@@ -588,12 +588,27 @@ fn create_stake_key_section(index: usize, default_y: usize) -> LinearLayout {
                         }
                     }
 
+                    // Get current stake key number
+                    let current_stake_num = s.call_on_name("stake_number_button", |button: &mut Button| {
+                        let label = button.label().to_string();
+                        if let Some(num_str) = label.chars()
+                            .filter(|c| c.is_digit(10))
+                            .collect::<String>()
+                            .parse::<usize>()
+                            .ok() 
+                        {
+                            num_str
+                        } else {
+                            1
+                        }
+                    }).unwrap_or(1);
+
                     // Check if stake pubkey is available
                     if let Some(stake_pubkey) = s.call_on_name(&format!("stake{}_pubkey_text", index), |view: &mut TextView| {
                         view.get_content().source().to_string()
                     }) {
                         if stake_pubkey.is_empty() {
-                            update_logs(s, &format!("Please click 'Show PubKey & Balance' button first to get the Stake {} public key", index));
+                            update_logs(s, &format!("Please click 'Show PubKey & Balance' button first to get the Stake {} public key", current_stake_num));
                             return;
                         }
                     }
@@ -614,11 +629,11 @@ fn create_stake_key_section(index: usize, default_y: usize) -> LinearLayout {
                                     return;
                                 }
                                 // Account doesn't exist, we can proceed
-                                show_create_stake_account_dialog(s, index);
+                                show_create_stake_account_dialog(s, current_stake_num);
                             }
                             Err(_) => {
                                 // Error usually means account doesn't exist, which is what we want
-                                show_create_stake_account_dialog(s, index);
+                                show_create_stake_account_dialog(s, current_stake_num);
                             }
                         }
                     }
