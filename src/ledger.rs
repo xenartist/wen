@@ -499,7 +499,7 @@ fn create_stake_key_section(index: usize, default_y: usize) -> LinearLayout {
             LinearLayout::horizontal()
                 .child(TextView::new("STAKE KEY:"))
                 .child(DummyView.fixed_width(1))
-                .child(Button::new("▼ Select Stake Key (1)", |_| {})
+                .child(Button::new("▼ Select Stake Key (1)", show_stake_number_select)
                     .with_name("stake_number_button")
                     .fixed_width(25))
                 .child(DummyView.fixed_width(1))
@@ -1532,4 +1532,79 @@ fn execute_create_stake_account(s: &mut Cursive, vault_path: &str, stake_path: &
             update_logs(s, &format!("✗ Error executing create-stake-account command: {}", e));
         }
     }
+}
+
+fn show_stake_number_select(s: &mut Cursive) {
+    let mut select = SelectView::new()
+        .h_align(cursive::align::HAlign::Left)
+        .autojump();
+    
+    let current_value = s.call_on_name("stake_number_button", |button: &mut Button| {
+        let label = button.label().to_string();
+        if let Some(num_str) = label.chars()
+            .filter(|c| c.is_digit(10))
+            .collect::<String>()
+            .parse::<usize>()
+            .ok() 
+        {
+            num_str
+        } else {
+            1
+        }
+    }).unwrap_or(1);
+    
+    // Add stake number options (1-10)
+    for i in 1..=10 {
+        select.add_item(format!("Stake Key {}", i), i.to_string());
+    }
+    
+    select.set_selection(current_value - 1);  // Adjust index to 0-based
+
+    select.set_on_submit(move |s, stake_num: &String| {
+        // Update stake number button text
+        s.call_on_name("stake_number_button", |view: &mut Button| {
+            view.set_label(format!("▼ STAKE KEY ({})", stake_num));
+        });
+        
+        // Update y button with the same number
+        s.call_on_name("stake1_y_button", |view: &mut Button| {
+            view.set_label(format!("▼ Select y' ({})", stake_num));
+        });
+        
+        // Get current x value
+        let x_value = s.call_on_name("stake1_x_button", |button: &mut Button| {
+            button.label()
+                .strip_prefix("▼ Select x' (")
+                .and_then(|s| s.strip_suffix(")"))
+                .unwrap_or("0")
+                .to_string()
+        }).unwrap_or_else(|| "0".to_string());
+        
+        // Update path text
+        s.call_on_name("stake1_path_text", |view: &mut TextView| {
+            view.set_content(StyledString::styled(
+                format!("usb://ledger?key={}/{}", x_value, stake_num),
+                ColorStyle::new(
+                    Color::Dark(BaseColor::White),
+                    Color::Dark(BaseColor::Blue)
+                )
+            ));
+        });
+
+        // Clear pubkey and balance
+        s.call_on_name("stake1_pubkey_text", |view: &mut TextView| {
+            view.set_content("");
+        });
+        s.call_on_name("stake1_balance", |view: &mut TextView| {
+            view.set_content("");
+        });
+        
+        s.pop_layer();
+    });
+
+    s.add_layer(
+        Dialog::around(select)
+            .title("Select Stake Key Number")
+            .button("Cancel", |s| { s.pop_layer(); })
+    );
 }
