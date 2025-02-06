@@ -497,8 +497,13 @@ fn create_stake_key_section(index: usize, default_y: usize) -> LinearLayout {
     LinearLayout::vertical()
         .child(
             LinearLayout::horizontal()
-                .child(TextView::new(format!("STAKE KEY {}:", index)))
+                .child(TextView::new("STAKE KEY:"))
                 .child(DummyView.fixed_width(1))
+                .child(Button::new("▼ Select Stake Key (1)", |_| {})
+                    .with_name("stake_number_button")
+                    .fixed_width(25))
+                .child(DummyView.fixed_width(1))
+
                 .child(TextView::new("").with_name(format!("stake{}_pubkey_text", index)))
                 .child(DummyView.fixed_width(1))
                 .child(TextView::new("").with_name(format!("stake{}_balance", index)).fixed_width(20))
