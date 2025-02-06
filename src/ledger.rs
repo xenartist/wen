@@ -829,10 +829,10 @@ pub fn get_ledger_view() -> LinearLayout {
                 // Simplified validator selector
                 .child(
                     LinearLayout::horizontal()
-                        .child(TextView::new("Select Validator: "))
-                            .child(Button::new("▼ Validator (0)", show_validator_select)
+                        .child(TextView::new("VALIDATOR ID: "))
+                            .child(Button::new("▼ Select Validator (0)", show_validator_select)
                                 .with_name("validator_button")
-                                .fixed_width(20))
+                                .fixed_width(25))
                 )
                 .child(DummyView.fixed_height(1))
                 .child(
