@@ -1068,6 +1068,27 @@ pub fn get_ledger_view() -> LinearLayout {
     .full_width()
     .max_height(40);  // This will now be the height of the scrollable area
 
+    // Create the new key tree panel
+    let key_tree = Panel::new(
+        LinearLayout::vertical()
+            .child(TextView::new("Key Derivation Path Tree:").style(ColorStyle::title_secondary()))
+            .child(DummyView.fixed_height(1))
+            // Add example section in yellow color
+            .child(TextView::new("x' (XXXX)").style(ColorStyle::new(
+                Color::Dark(BaseColor::Yellow),
+                Color::Dark(BaseColor::Black)
+            )))
+            .child(TextView::new("└── y' (YYYY)").style(ColorStyle::new(
+                Color::Dark(BaseColor::Yellow),
+                Color::Dark(BaseColor::Black)
+            )))
+            .child(DummyView.fixed_height(1))
+            // Add actual path tree view
+            .child(TextView::new("").with_name("key_tree_view"))
+    )
+    .title("Key Tree")
+    .fixed_width(30);  // Adjust width as needed
+
     let logs = Panel::new(
         ScrollView::new(TextView::new(""))
             .scroll_strategy(cursive::view::ScrollStrategy::StickToBottom)
@@ -1077,10 +1098,15 @@ pub fn get_ledger_view() -> LinearLayout {
     .full_width()
     .fixed_height(10);
 
+    // Arrange panels in the main layout
     LinearLayout::vertical()
         .child(dashboard)
-        .child(ResizedView::with_full_screen(config))  // Make config take remaining space
-        .child(logs)  // Logs will always be visible at the bottom
+        .child(
+            LinearLayout::horizontal()  // New horizontal layout to hold config and key tree
+                .child(ResizedView::with_full_screen(config))
+                .child(key_tree)
+        )
+        .child(logs)
 }
 
 // Clean ANSI escape sequences from log message
