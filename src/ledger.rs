@@ -762,53 +762,68 @@ fn show_stake_address_select(s: &mut Cursive, stake_index: usize) {
         .h_align(cursive::align::HAlign::Left)
         .autojump();
     
+    // Get current y value from button label
     let current_value = s.call_on_name(&format!("stake{}_y_button", stake_index), |button: &mut Button| {
         let label = button.label().to_string();
-        if let Some(num_str) = label.chars()
-            .filter(|c| c.is_digit(10))
-            .collect::<String>()
-            .parse::<usize>()
-            .ok() 
-        {
-            num_str + 1  // Add 1 to account for N/A option
+        if label.contains("N/A") {
+            "N/A".to_string()
         } else {
-            0  // Select N/A
+            label.chars()
+                .filter(|c| c.is_digit(10))
+                .collect::<String>()
         }
-    }).unwrap_or(0);
-    
-    // Add N/A and 10 account options
-    select.add_item("N/A", "N/A".to_string());
-    for i in 0..10 {
-        select.add_item(format!("Account {}", i), i.to_string());
-    }
-    
-    select.set_selection(current_value);
+    }).unwrap_or_else(|| "1".to_string());
 
-    let stake_index = stake_index.clone();
+    // Add address options
+    select.add_item("N/A", "N/A".to_string());
+    for i in 1..=9 {
+        select.add_item(format!("Address {}", i), i.to_string());
+    }
+
+    // Set selection based on current value
+    if current_value == "N/A" {
+        select.set_selection(0);  // N/A is at index 0
+    } else if let Ok(num) = current_value.parse::<usize>() {
+        select.set_selection(num);  // Add 1 because N/A is the first item
+    }
+
     select.set_on_submit(move |s, address: &String| {
-        // First get the current path to extract the x value
-        let current_x = s.call_on_name(&format!("stake{}_path_text", stake_index), |view: &mut TextView| {
-            let current_path = view.get_content().source().to_string();
-            current_path
-                .strip_prefix("usb://ledger?key=")
-                .and_then(|s| s.split('/').next())
-                .unwrap_or("0")
-                .to_string()
+        // Update y button
+        s.call_on_name(&format!("stake{}_y_button", stake_index), |view: &mut Button| {
+            view.set_label(format!("▼ Select y' ({})", address));
+        });
+
+        // Get current x value
+        let x_value = s.call_on_name(&format!("stake{}_x_button", stake_index), |button: &mut Button| {
+            let label = button.label().to_string();
+            label.chars()
+                .filter(|c| c.is_digit(10))
+                .collect::<String>()
         }).unwrap_or_else(|| "0".to_string());
 
-        // Update y button
-        update_stake_y_button_text(s, stake_index, address);
-
-        // Update path text with current x value and new y value
+        // Update path text based on whether address is N/A
         s.call_on_name(&format!("stake{}_path_text", stake_index), |view: &mut TextView| {
-            let styled_text = StyledString::styled(
-                format!("usb://ledger?key={}/{}", current_x, address),
+            let path = if address == "N/A" {
+                format!("usb://ledger?key={}", x_value)
+            } else {
+                format!("usb://ledger?key={}/{}", x_value, address)
+            };
+            
+            view.set_content(StyledString::styled(
+                path,
                 ColorStyle::new(
                     Color::Dark(BaseColor::White),
                     Color::Dark(BaseColor::Blue)
                 )
-            );
-            view.set_content(styled_text);
+            ));
+        });
+
+        // Clear pubkey and balance
+        s.call_on_name(&format!("stake{}_pubkey_text", stake_index), |view: &mut TextView| {
+            view.set_content("");
+        });
+        s.call_on_name(&format!("stake{}_balance", stake_index), |view: &mut TextView| {
+            view.set_content("");
         });
 
         s.pop_layer();
@@ -1648,9 +1663,6 @@ fn show_stake_number_select(s: &mut Cursive) {
         let x_button_label = s.call_on_name("stake1_x_button", |button: &mut Button| {
             button.label().to_string()
         }).unwrap_or_else(|| "▼ Select x' (0)".to_string());
-
-        // Debug: print each character's code point
-        update_logs(s, &format!("Label chars: {:?}", x_button_label.chars().map(|c| (c, c as u32)).collect::<Vec<_>>()));
 
         // Extract x value using a more robust approach
         let x_value = x_button_label
