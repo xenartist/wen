@@ -1583,8 +1583,8 @@ fn show_stake_number_select(s: &mut Cursive) {
         }
     }).unwrap_or(1);
     
-    // Add stake number options (1-10)
-    for i in 1..=10 {
+    // Add stake number options (1-9)
+    for i in 1..=9 {
         select.add_item(format!("Stake Key {}", i), i.to_string());
     }
     
