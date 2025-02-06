@@ -568,6 +568,53 @@ fn create_stake_key_section(index: usize, default_y: usize) -> LinearLayout {
                     }
                 }).fixed_width(15))
                 .child(DummyView.fixed_width(1))
+                .child(Button::new("Create Stake Account", move |s| {
+                    // First check if vault key is available
+                    if let Some(vault_pubkey) = s.call_on_name("wallet_pubkey_text", |view: &mut TextView| {
+                        view.get_content().source().to_string()
+                    }) {
+                        if vault_pubkey.is_empty() {
+                            update_logs(s, "Please click 'Show PubKey & Balance' button first to get the Vault public key");
+                            return;
+                        }
+                    }
+
+                    // Check if stake pubkey is available
+                    if let Some(stake_pubkey) = s.call_on_name(&format!("stake{}_pubkey_text", index), |view: &mut TextView| {
+                        view.get_content().source().to_string()
+                    }) {
+                        if stake_pubkey.is_empty() {
+                            update_logs(s, &format!("Please click 'Show PubKey & Balance' button first to get the Stake {} public key", index));
+                            return;
+                        }
+                    }
+
+                    // Get stake path and check if account exists
+                    if let Some(stake_path) = s.call_on_name(&format!("stake{}_path_text", index), |view: &mut TextView| {
+                        view.get_content().source().to_string()
+                    }) {
+                        let check_output = Command::new("solana")
+                            .arg("account")
+                            .arg(&stake_path)
+                            .output();
+
+                        match check_output {
+                            Ok(output) => {
+                                if output.status.success() {
+                                    update_logs(s, &format!("✗ Account {} already exists. Please use a different stake account path by changing x' or y' values.", stake_path));
+                                    return;
+                                }
+                                // Account doesn't exist, we can proceed
+                                show_create_stake_account_dialog(s, index);
+                            }
+                            Err(_) => {
+                                // Error usually means account doesn't exist, which is what we want
+                                show_create_stake_account_dialog(s, index);
+                            }
+                        }
+                    }
+                }).fixed_width(22))
+                .child(DummyView.fixed_width(1))
                 .child(Button::new("Check Stake Account", move |s| {
                     if let Some(pubkey) = s.call_on_name(&format!("stake{}_pubkey_text", index), |view: &mut TextView| {
                         view.get_content().source().to_string()
@@ -1368,6 +1415,124 @@ fn execute_transfer(s: &mut Cursive, from_path: &str, to_address: &str, amount: 
         }
         Err(e) => {
             update_logs(s, &format!("✗ Error executing transfer command: {}", e));
+        }
+    }
+}
+
+// Add new function to show create stake account dialog
+fn show_create_stake_account_dialog(s: &mut Cursive, stake_index: usize) {
+    // Get vault key info
+    let vault_path = s.call_on_name("wallet_path_text", |view: &mut TextView| {
+        view.get_content().source().to_string()
+    }).unwrap_or_default();
+    
+    let vault_pubkey = s.call_on_name("wallet_pubkey_text", |view: &mut TextView| {
+        view.get_content().source().to_string()
+    }).unwrap_or_default();
+
+    let vault_balance = s.call_on_name("vault_balance", |view: &mut TextView| {
+        view.get_content().source().to_string()
+    }).unwrap_or_default();
+
+    // Get stake key info
+    let stake_path = s.call_on_name(&format!("stake{}_path_text", stake_index), |view: &mut TextView| {
+        view.get_content().source().to_string()
+    }).unwrap_or_default();
+
+    let stake_pubkey = s.call_on_name(&format!("stake{}_pubkey_text", stake_index), |view: &mut TextView| {
+        view.get_content().source().to_string()
+    }).unwrap_or_default();
+
+    let dialog = Dialog::new()
+        .title(format!("Create Stake Account {}", stake_index))
+        .content(
+            LinearLayout::vertical()
+                .child(TextView::new("From VAULT (ID/WITHDRAW) KEY:"))
+                .child(TextView::new(format!("Path: {}", vault_path)))
+                .child(TextView::new(format!("PubKey: {}", vault_pubkey)))
+                .child(TextView::new(format!("Available Balance: {}", vault_balance)))
+                .child(DummyView.fixed_height(1))
+                .child(TextView::new(format!("To Stake Account {}:", stake_index)))
+                .child(TextView::new(format!("Path: {}", stake_path)))
+                .child(TextView::new(format!("PubKey: {}", stake_pubkey)))
+                .child(DummyView.fixed_height(1))
+                .child(TextView::new("Stake Amount (XNT):"))
+                .child(EditView::new()
+                    .content("1")
+                    .with_name("stake_amount")
+                    .fixed_width(20))
+        )
+        .button("Cancel", |s| { s.pop_layer(); })
+        .button("Create", move |s| {
+            let amount = s.call_on_name("stake_amount", |view: &mut EditView| {
+                view.get_content().to_string()
+            }).unwrap_or_default();
+
+            show_create_stake_confirmation(s, &vault_path, &stake_path, &amount, stake_index);
+        });
+
+    s.add_layer(dialog);
+}
+
+// Add confirmation dialog
+fn show_create_stake_confirmation(s: &mut Cursive, vault_path: &str, stake_path: &str, amount: &str, stake_index: usize) {
+    let dialog = Dialog::new()
+        .title("Confirm Create Stake Account")
+        .content(
+            LinearLayout::vertical()
+                .child(TextView::new("Please confirm the stake account creation:"))
+                .child(DummyView.fixed_height(1))
+                .child(TextView::new(format!("From: {}", vault_path)))
+                .child(TextView::new(format!("To: {}", stake_path)))
+                .child(TextView::new(format!("Amount: {} XNT", amount)))
+        )
+        .button("Cancel", |s| { s.pop_layer(); })
+        .button("Confirm", {
+            let vault_path = vault_path.to_string();
+            let stake_path = stake_path.to_string();
+            let amount = amount.to_string();
+            move |s| {
+                s.pop_layer();  // Close confirmation dialog
+                s.pop_layer();  // Close create dialog
+                execute_create_stake_account(s, &vault_path, &stake_path, &amount, stake_index);
+            }
+        });
+
+    s.add_layer(dialog);
+}
+
+// Add execute function
+fn execute_create_stake_account(s: &mut Cursive, vault_path: &str, stake_path: &str, amount: &str, stake_index: usize) {
+    update_logs(s, &format!("Creating stake account {} with {} XNT...", stake_index, amount));
+
+    let output = Command::new("solana")
+        .arg("create-stake-account")
+        .arg(stake_path)
+        .arg(amount)
+        .arg("--keypair")
+        .arg(vault_path)
+        .output();
+
+    match output {
+        Ok(output) => {
+            if output.status.success() {
+                update_logs(s, "✓ Stake account created successfully!");
+                
+                // Refresh balances
+                show_pubkey(s, "wallet_path_text", "wallet_pubkey_text", "vault_balance");
+                show_pubkey(
+                    s,
+                    &format!("stake{}_path_text", stake_index),
+                    &format!("stake{}_pubkey_text", stake_index),
+                    &format!("stake{}_balance", stake_index)
+                );
+            } else {
+                let error = String::from_utf8_lossy(&output.stderr);
+                update_logs(s, &format!("✗ Failed to create stake account: {}", error));
+            }
+        }
+        Err(e) => {
+            update_logs(s, &format!("✗ Error executing create-stake-account command: {}", e));
         }
     }
 }
