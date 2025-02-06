@@ -1641,32 +1641,42 @@ fn show_stake_number_select(s: &mut Cursive) {
         select.add_item(format!("Stake Key {}", i), i.to_string());
     }
     
-    select.set_selection(current_value - 1);  // Adjust index to 0-based
+    select.set_selection(current_value - 1);
 
     select.set_on_submit(move |s, stake_num: &String| {
+        // Get x value first
+        let x_button_label = s.call_on_name("stake1_x_button", |button: &mut Button| {
+            button.label().to_string()
+        }).unwrap_or_else(|| "▼ Select x' (0)".to_string());
+
+        // Debug: print each character's code point
+        update_logs(s, &format!("Label chars: {:?}", x_button_label.chars().map(|c| (c, c as u32)).collect::<Vec<_>>()));
+
+        // Extract x value using a more robust approach
+        let x_value = x_button_label
+            .chars()
+            .filter(|c| c.is_digit(10))
+            .collect::<String>();
+
+        let x_value = if x_value.is_empty() { "0".to_string() } else { x_value };
+
         // Update stake number button text
         s.call_on_name("stake_number_button", |view: &mut Button| {
             view.set_label(format!("▼ Select Stake Key ({})", stake_num));
         });
         
-        // Update y button with the same number
+        // Update y button with the stake number
         s.call_on_name("stake1_y_button", |view: &mut Button| {
             view.set_label(format!("▼ Select y' ({})", stake_num));
         });
         
-        // Get current x value
-        let x_value = s.call_on_name("stake1_x_button", |button: &mut Button| {
-            button.label()
-                .strip_prefix("▼ Select x' (")
-                .and_then(|s| s.strip_suffix(")"))
-                .unwrap_or("0")
-                .to_string()
-        }).unwrap_or_else(|| "0".to_string());
+        // Update and log path text
+        let path = format!("usb://ledger?key={}/{}", x_value, stake_num);
+        update_logs(s, &format!("Setting path to: {}", path));
         
-        // Update path text with current x value
         s.call_on_name("stake1_path_text", |view: &mut TextView| {
             view.set_content(StyledString::styled(
-                format!("usb://ledger?key={}/{}", x_value, stake_num),
+                path,
                 ColorStyle::new(
                     Color::Dark(BaseColor::White),
                     Color::Dark(BaseColor::Blue)
