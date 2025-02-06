@@ -610,7 +610,7 @@ fn create_stake_key_section(index: usize, default_y: usize) -> LinearLayout {
                         match check_output {
                             Ok(output) => {
                                 if output.status.success() {
-                                    update_logs(s, &format!("✗ Account {} already exists. Please use a different stake account path by changing x' or y' values.", stake_path));
+                                    update_logs(s, &format!("✗ Account {} already exists. Please use a different stake account.", stake_path));
                                     return;
                                 }
                                 // Account doesn't exist, we can proceed
@@ -655,6 +655,9 @@ fn create_stake_key_section(index: usize, default_y: usize) -> LinearLayout {
                         }
                     }
                 }).fixed_width(25))
+                .child(DummyView.fixed_width(1))
+                .child(Button::new("Delegate Stake Account", |_| {})  
+                    .fixed_width(25))
         )
 }
 
