@@ -1068,7 +1068,7 @@ pub fn get_ledger_view() -> LinearLayout {
     .full_width()
     .max_height(40);  // This will now be the height of the scrollable area
 
-    // Create the new key tree panel
+    // Create the new key tree panel with default tree structure
     let key_tree = Panel::new(
         LinearLayout::vertical()
             .child(TextView::new("Key Derivation Path Tree:").style(ColorStyle::title_secondary()))
@@ -1083,11 +1083,22 @@ pub fn get_ledger_view() -> LinearLayout {
                 Color::Dark(BaseColor::Black)
             )))
             .child(DummyView.fixed_height(1))
-            // Add actual path tree view
-            .child(TextView::new("").with_name("key_tree_view"))
+            // Add default tree structure
+            .child(TextView::new("\
+0 (VAULT)
+└── 0 (VOTE)
+└── 1 (STAKE 1)
+└── 2 (STAKE 2)
+└── 3 (STAKE 3)
+└── 4 (STAKE 4)
+└── 5 (STAKE 5)
+└── 6 (STAKE 6)
+└── 7 (STAKE 7)
+└── 8 (STAKE 8)
+└── 9 (STAKE 9)").with_name("key_tree_view"))
     )
     .title("Key Tree")
-    .fixed_width(30);  // Adjust width as needed
+    .fixed_width(30);
 
     let logs = Panel::new(
         ScrollView::new(TextView::new(""))
