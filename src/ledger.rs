@@ -690,6 +690,14 @@ fn show_stake_account_select(s: &mut Cursive, stake_index: usize) {
         let default_y = stake_index.to_string();
         update_stake_y_button_text(s, stake_index, &default_y);
 
+
+        // Reset stake key button to default (stake_index)
+        s.call_on_name("stake_number_button", |view: &mut Button| {
+            view.set_label(format!("▼ Select Stake Key ({})", stake_index));
+        });
+
+
+
         // Update path text with new x and default y
         s.call_on_name(&format!("stake{}_path_text", stake_index), |view: &mut TextView| {
             let styled_text = StyledString::styled(
