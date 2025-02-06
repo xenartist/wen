@@ -1168,6 +1168,28 @@ fn show_validator_select(s: &mut Cursive) {
             });
         }
 
+        // Reset stake key button to default (1)
+        s.call_on_name("stake_number_button", |view: &mut Button| {
+            view.set_label("▼ Select Stake Key (1)");
+        });
+        
+
+        // Reset stake y button to default (1)
+        s.call_on_name("stake1_y_button", |view: &mut Button| {
+            view.set_label("▼ Select y' (1)");
+        });
+        
+        // Reset stake path with new validator value and default stake number
+        s.call_on_name("stake1_path_text", |view: &mut TextView| {
+            view.set_content(StyledString::styled(
+                format!("usb://ledger?key={}/1", validator),
+                ColorStyle::new(
+                    Color::Dark(BaseColor::White),
+                    Color::Dark(BaseColor::Blue)
+                )
+            ));
+        });
+
         // Log the change
         update_logs(s, &format!("Switched to Validator {}", validator));
 
@@ -1563,7 +1585,7 @@ fn show_stake_number_select(s: &mut Cursive) {
     select.set_on_submit(move |s, stake_num: &String| {
         // Update stake number button text
         s.call_on_name("stake_number_button", |view: &mut Button| {
-            view.set_label(format!("▼ STAKE KEY ({})", stake_num));
+            view.set_label(format!("▼ Select Stake Key ({})", stake_num));
         });
         
         // Update y button with the same number
