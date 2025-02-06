@@ -508,6 +508,7 @@ fn create_stake_key_section(index: usize, default_y: usize) -> LinearLayout {
                 .child(DummyView.fixed_width(1))
                 .child(TextView::new("").with_name(format!("stake{}_balance", index)).fixed_width(20))
         )
+        .child(DummyView.fixed_height(1))
         .child(
             LinearLayout::horizontal()
                 .child(Button::new("▼ Select x' (0)", move |s| {
@@ -532,6 +533,7 @@ fn create_stake_key_section(index: usize, default_y: usize) -> LinearLayout {
                     )
                 ).with_name(format!("stake{}_path_text", index)))
         )
+        .child(DummyView.fixed_height(1))
         .child(
             LinearLayout::horizontal()
                 .child(Button::new("Show PubKey & Balance", move |s| {
@@ -870,6 +872,7 @@ pub fn get_ledger_view() -> LinearLayout {
                                 .child(DummyView.fixed_width(1))
                                 .child(TextView::new("").with_name("vault_balance").fixed_width(20))                          
                         )
+                        .child(DummyView.fixed_height(1))
                         .child(
                             LinearLayout::horizontal()
                                 .child(Button::new("▼ Select x' (0)", show_account_select)
@@ -890,6 +893,7 @@ pub fn get_ledger_view() -> LinearLayout {
                                     )
                                 ).with_name("wallet_path_text"))
                         )
+                        .child(DummyView.fixed_height(1))
                         .child(
                             LinearLayout::horizontal()
                                 .child(Button::new("Show PubKey & Balance", move |s| {
@@ -939,6 +943,7 @@ pub fn get_ledger_view() -> LinearLayout {
                                 .child(DummyView.fixed_width(1))
                                 .child(TextView::new("").with_name("vote_balance").fixed_width(20))
                         )
+                        .child(DummyView.fixed_height(1))
                         .child(
                             LinearLayout::horizontal()
                                 .child(Button::new("▼ Select x' (0)", show_vote_account_select)
@@ -959,6 +964,7 @@ pub fn get_ledger_view() -> LinearLayout {
                                     )
                                 ).with_name("vote_path_text"))
                         )
+                        .child(DummyView.fixed_height(1))
                         .child(
                             LinearLayout::horizontal()
                                 .child(Button::new("Show PubKey & Balance", move |s| {
