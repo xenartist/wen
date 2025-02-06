@@ -1222,21 +1222,33 @@ fn show_validator_select(s: &mut Cursive) {
             view.set_label("▼ Select Stake Key (1)");
         });
         
+        // Update stake x button with new validator value
+        s.call_on_name("stake1_x_button", |view: &mut Button| {
+            view.set_label(format!("▼ Select x' ({})", validator));
+        });
 
         // Reset stake y button to default (1)
         s.call_on_name("stake1_y_button", |view: &mut Button| {
             view.set_label("▼ Select y' (1)");
         });
         
-        // Reset stake path with new validator value and default stake number
+        // Update stake path with new validator value
         s.call_on_name("stake1_path_text", |view: &mut TextView| {
             view.set_content(StyledString::styled(
-                format!("usb://ledger?key={}/1", validator),
+                format!("usb://ledger?key={}/1", validator), 
                 ColorStyle::new(
                     Color::Dark(BaseColor::White),
                     Color::Dark(BaseColor::Blue)
                 )
             ));
+        });
+
+        // Clear stake pubkey and balance
+        s.call_on_name("stake1_pubkey_text", |view: &mut TextView| {
+            view.set_content("");
+        });
+        s.call_on_name("stake1_balance", |view: &mut TextView| {
+            view.set_content("");
         });
 
         // Log the change
@@ -1502,12 +1514,12 @@ fn show_create_stake_account_dialog(s: &mut Cursive, stake_index: usize) {
         view.get_content().source().to_string()
     }).unwrap_or_default();
 
-    // Get stake key info
-    let stake_path = s.call_on_name(&format!("stake{}_path_text", stake_index), |view: &mut TextView| {
+    // Get stake key info using fixed index 1 (since we only have one stake key section)
+    let stake_path = s.call_on_name("stake1_path_text", |view: &mut TextView| {
         view.get_content().source().to_string()
     }).unwrap_or_default();
 
-    let stake_pubkey = s.call_on_name(&format!("stake{}_pubkey_text", stake_index), |view: &mut TextView| {
+    let stake_pubkey = s.call_on_name("stake1_pubkey_text", |view: &mut TextView| {
         view.get_content().source().to_string()
     }).unwrap_or_default();
 
@@ -1651,7 +1663,7 @@ fn show_stake_number_select(s: &mut Cursive) {
                 .to_string()
         }).unwrap_or_else(|| "0".to_string());
         
-        // Update path text
+        // Update path text with current x value
         s.call_on_name("stake1_path_text", |view: &mut TextView| {
             view.set_content(StyledString::styled(
                 format!("usb://ledger?key={}/{}", x_value, stake_num),
