@@ -503,7 +503,6 @@ fn create_stake_key_section(index: usize, default_y: usize) -> LinearLayout {
                     .with_name("stake_number_button")
                     .fixed_width(25))
                 .child(DummyView.fixed_width(1))
-
                 .child(TextView::new("").with_name(format!("stake{}_pubkey_text", index)))
                 .child(DummyView.fixed_width(1))
                 .child(TextView::new("").with_name(format!("stake{}_balance", index)).fixed_width(20))
@@ -574,7 +573,10 @@ fn create_stake_key_section(index: usize, default_y: usize) -> LinearLayout {
                         }
                     }
                 }).fixed_width(15))
-                .child(DummyView.fixed_width(1))
+        )
+        .child(DummyView.fixed_height(1))
+        .child(
+            LinearLayout::horizontal() 
                 .child(Button::new("Create Stake Account", move |s| {
                     // First check if vault key is available
                     if let Some(vault_pubkey) = s.call_on_name("wallet_pubkey_text", |view: &mut TextView| {
@@ -620,7 +622,7 @@ fn create_stake_key_section(index: usize, default_y: usize) -> LinearLayout {
                             }
                         }
                     }
-                }).fixed_width(22))
+                }).fixed_width(25))
                 .child(DummyView.fixed_width(1))
                 .child(Button::new("Check Stake Account", move |s| {
                     if let Some(pubkey) = s.call_on_name(&format!("stake{}_pubkey_text", index), |view: &mut TextView| {
@@ -652,7 +654,7 @@ fn create_stake_key_section(index: usize, default_y: usize) -> LinearLayout {
                             }
                         }
                     }
-                }).fixed_width(22))
+                }).fixed_width(25))
         )
 }
 
