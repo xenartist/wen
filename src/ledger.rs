@@ -640,11 +640,26 @@ fn create_stake_key_section(index: usize, default_y: usize) -> LinearLayout {
                 }).fixed_width(25))
                 .child(DummyView.fixed_width(1))
                 .child(Button::new("Check Stake Account", move |s| {
+                    // Get current stake key number
+                    let current_stake_num = s.call_on_name("stake_number_button", |button: &mut Button| {
+                        let label = button.label().to_string();
+                        if let Some(num_str) = label.chars()
+                            .filter(|c| c.is_digit(10))
+                            .collect::<String>()
+                            .parse::<usize>()
+                            .ok() 
+                        {
+                            num_str
+                        } else {
+                            1
+                        }
+                    }).unwrap_or(1);
+
                     if let Some(pubkey) = s.call_on_name(&format!("stake{}_pubkey_text", index), |view: &mut TextView| {
                         view.get_content().source().to_string()
                     }) {
                         if pubkey.is_empty() {
-                            update_logs(s, &format!("Please click 'Show PubKey & Balance' button first to get the Stake {} public key and balance", index));
+                            update_logs(s, &format!("Please click 'Show PubKey & Balance' button first to get the Stake {} public key and balance", current_stake_num));
                         } else {
                             // Execute solana stake-account command
                             let output = Command::new("solana")
@@ -656,11 +671,11 @@ fn create_stake_key_section(index: usize, default_y: usize) -> LinearLayout {
                                 Ok(output) => {
                                     if output.status.success() {
                                         let result = String::from_utf8_lossy(&output.stdout);
-                                        update_logs(s, &format!("Stake {} Account Info:", index));
+                                        update_logs(s, &format!("Stake {} Account Info:", current_stake_num));
                                         update_logs(s, &result);
                                     } else {
                                         let error = String::from_utf8_lossy(&output.stderr);
-                                        update_logs(s, &format!("Failed to get Stake {} account info: {}", index, error));
+                                        update_logs(s, &format!("Failed to get Stake {} account info: {}", current_stake_num, error));
                                     }
                                 }
                                 Err(e) => {
