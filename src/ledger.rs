@@ -699,52 +699,56 @@ fn show_stake_account_select(s: &mut Cursive, stake_index: usize) {
     
     let current_value = s.call_on_name(&format!("stake{}_x_button", stake_index), |button: &mut Button| {
         let label = button.label().to_string();
-        if let Some(num_str) = label.chars()
+        label.chars()
             .filter(|c| c.is_digit(10))
             .collect::<String>()
             .parse::<usize>()
-            .ok() 
-        {
-            num_str
-        } else {
-            0
-        }
-    }).unwrap_or(0);
-    
-    // Add 10 account options
-    for i in 0..10 {
-        select.add_item(format!("Account {}", i), i.to_string());
+            .ok()
+    }).unwrap_or(Some(0)).unwrap_or(0);
+
+    // Add validator options
+    for i in 0..=9 {
+        select.add_item(format!("Validator {}", i), i.to_string());
     }
     
     select.set_selection(current_value);
 
-    let stake_index = stake_index.clone();
     select.set_on_submit(move |s, account: &String| {
         // Update x button
-        update_stake_x_button_text(s, stake_index, account);
+        s.call_on_name(&format!("stake{}_x_button", stake_index), |view: &mut Button| {
+            view.set_label(format!("▼ Select x' ({})", account));
+        });
         
-        // Reset y to default value (stake_index)
-        let default_y = stake_index.to_string();
-        update_stake_y_button_text(s, stake_index, &default_y);
-
-
-        // Reset stake key button to default (stake_index)
-        s.call_on_name("stake_number_button", |view: &mut Button| {
-            view.set_label(format!("▼ Select Stake Key ({})", stake_index));
+        // Reset y to default value (1)
+        s.call_on_name(&format!("stake{}_y_button", stake_index), |view: &mut Button| {
+            view.set_label("▼ Select y' (1)");
         });
 
-
+        // Get current stake key number
+        let stake_num = s.call_on_name("stake_number_button", |button: &mut Button| {
+            let label = button.label().to_string();
+            label.chars()
+                .filter(|c| c.is_digit(10))
+                .collect::<String>()
+        }).unwrap_or_else(|| "1".to_string());
 
         // Update path text with new x and default y
         s.call_on_name(&format!("stake{}_path_text", stake_index), |view: &mut TextView| {
-            let styled_text = StyledString::styled(
-                format!("usb://ledger?key={}/{}", account, default_y),
+            view.set_content(StyledString::styled(
+                format!("usb://ledger?key={}/1", account),
                 ColorStyle::new(
                     Color::Dark(BaseColor::White),
                     Color::Dark(BaseColor::Blue)
                 )
-            );
-            view.set_content(styled_text);
+            ));
+        });
+
+        // Clear pubkey and balance
+        s.call_on_name(&format!("stake{}_pubkey_text", stake_index), |view: &mut TextView| {
+            view.set_content("");
+        });
+        s.call_on_name(&format!("stake{}_balance", stake_index), |view: &mut TextView| {
+            view.set_content("");
         });
 
         s.pop_layer();
