@@ -515,13 +515,15 @@ fn create_stake_key_section(index: usize, default_y: usize) -> LinearLayout {
                 .child(Button::new("▼ Select x' (0)", move |s| {
                     show_stake_account_select(s, index);
                 })
-                .with_name(format!("stake{}_x_button", index))
+                .disabled()
+                .with_name(&format!("stake{}_x_button", index))
                 .fixed_width(20))
                 .child(DummyView.fixed_width(1))
-                .child(Button::new(format!("▼ Select y' ({})", default_y), move |s| {
+                .child(Button::new("▼ Select y' (1)", move |s| {
                     show_stake_address_select(s, index);
                 })
-                .with_name(format!("stake{}_y_button", index))
+                .disabled()
+                .with_name(&format!("stake{}_y_button", index))
                 .fixed_width(20))
                 .child(DummyView.fixed_width(1))
                 .child(TextView::new(
@@ -933,10 +935,12 @@ pub fn get_ledger_view() -> LinearLayout {
                         .child(
                             LinearLayout::horizontal()
                                 .child(Button::new("▼ Select x' (0)", show_account_select)
+                                    .disabled()
                                     .with_name("x_button")
                                     .fixed_width(20))
                                 .child(DummyView.fixed_width(1))
                                 .child(Button::new("▼ Select y' (N/A)", show_address_select)
+                                    .disabled()
                                     .with_name("y_button")
                                     .fixed_width(20))
                                 .child(DummyView.fixed_width(1))
@@ -1004,10 +1008,12 @@ pub fn get_ledger_view() -> LinearLayout {
                         .child(
                             LinearLayout::horizontal()
                                 .child(Button::new("▼ Select x' (0)", show_vote_account_select)
+                                    .disabled()
                                     .with_name("vote_x_button")
                                     .fixed_width(20))
                                 .child(DummyView.fixed_width(1))
                                 .child(Button::new("▼ Select y' (0)", show_vote_address_select)
+                                    .disabled()
                                     .with_name("vote_y_button")
                                     .fixed_width(20))
                                 .child(DummyView.fixed_width(1))
