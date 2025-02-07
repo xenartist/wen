@@ -211,6 +211,7 @@ fn show_account_select(s: &mut Cursive) {
         // Reset y value to N/A
         update_y_button_text(s, "N/A");
         
+        update_key_tree(s);
         s.pop_layer();
     });
 
@@ -342,6 +343,7 @@ fn show_vote_account_select(s: &mut Cursive) {
             view.set_content(styled_text);
         });
 
+        update_key_tree(s);
         s.pop_layer();
     });
 
@@ -751,6 +753,7 @@ fn show_stake_account_select(s: &mut Cursive, stake_index: usize) {
             view.set_content("");
         });
 
+        update_key_tree(s);
         s.pop_layer();
     });
 
@@ -1310,6 +1313,7 @@ fn show_validator_select(s: &mut Cursive) {
         // Log the change
         update_logs(s, &format!("Switched to Validator {}", validator));
 
+        update_key_tree(s);
         s.pop_layer();
     });
 
@@ -1753,4 +1757,60 @@ fn show_stake_number_select(s: &mut Cursive) {
             .title("Select Stake Key Number")
             .button("Cancel", |s| { s.pop_layer(); })
     );
+}
+
+// Function to update the key tree view
+fn update_key_tree(s: &mut Cursive) {
+    let mut tree = String::new();
+
+    // Get Vault Key x value from path
+    let vault_x = s.call_on_name("wallet_path_text", |view: &mut TextView| {
+        let path = view.get_content().source().to_string();
+        if path.is_empty() {
+            "0".to_string()
+        } else {
+            path.split("key=").nth(1)
+                .unwrap_or("0")
+                .to_string()
+        }
+    }).unwrap_or_else(|| "0".to_string());
+
+    // Get Vote Key y value from path
+    let vote_y = s.call_on_name("vote_path_text", |view: &mut TextView| {
+        let path = view.get_content().source().to_string();
+        if path.is_empty() {
+            "0".to_string()
+        } else {
+            path.split('/')
+                .last()
+                .unwrap_or("0")
+                .to_string()
+        }
+    }).unwrap_or_else(|| "0".to_string());
+
+    // Build tree structure
+    tree.push_str(&format!("{} (VAULT)\n", vault_x));
+    tree.push_str(&format!("└── {} (VOTE)\n", vote_y));
+
+    // Add all Stake Keys with y values
+    for i in 1..=9 {
+        let stake_y = s.call_on_name(&format!("stake{}_path_text", i), |view: &mut TextView| {
+            let path = view.get_content().source().to_string();
+            if path.is_empty() {
+                i.to_string()  // Default y value matches the stake key number
+            } else {
+                path.split('/')
+                    .last()
+                    .unwrap_or(&i.to_string())
+                    .to_string()
+            }
+        }).unwrap_or_else(|| i.to_string());  // Default to stake key number
+
+        tree.push_str(&format!("└── {} (STAKE {})\n", stake_y, i));
+    }
+
+    // Update the tree view
+    s.call_on_name("key_tree_view", |view: &mut TextView| {
+        view.set_content(tree);
+    });
 }
