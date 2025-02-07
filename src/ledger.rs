@@ -606,8 +606,9 @@ fn create_stake_key_section(index: usize, default_y: usize) -> LinearLayout {
                     }
                 }).fixed_width(25))
                 .child(DummyView.fixed_width(1))
-                .child(Button::new("Delegate Stake Account", |_| {})  
-                    .fixed_width(25))
+                .child(Button::new("Delegate Stake Account", move |s| {
+                    show_delegate_dialog(s, index);
+                }).fixed_width(25))
         )
 }
 
@@ -1735,4 +1736,117 @@ fn update_key_tree(s: &mut Cursive) {
     s.call_on_name("key_tree_view", |view: &mut TextView| {
         view.set_content(tree);
     });
+}
+
+fn show_delegate_dialog(s: &mut Cursive, stake_index: usize) {
+    // Get stake key path
+    let stake_path = s.call_on_name(&format!("stake{}_path_text", stake_index), |view: &mut TextView| {
+        view.get_content().source().to_string()
+    }).unwrap_or_default();
+
+    // Get vote key path
+    let vote_path = s.call_on_name("vote_path_text", |view: &mut TextView| {
+        view.get_content().source().to_string()
+    }).unwrap_or_default();
+
+    // Get vault key path
+    let vault_path = s.call_on_name("wallet_path_text", |view: &mut TextView| {
+        view.get_content().source().to_string()
+    }).unwrap_or_default();
+
+    // Get stake pubkey
+    let stake_pubkey = s.call_on_name(&format!("stake{}_pubkey_text", stake_index), |view: &mut TextView| {
+        view.get_content().source().to_string()
+    }).unwrap_or_default();
+
+    // Get vote pubkey
+    let vote_pubkey = s.call_on_name("vote_pubkey_text", |view: &mut TextView| {
+        view.get_content().source().to_string()
+    }).unwrap_or_default();
+
+    // Get vault pubkey
+    let vault_pubkey = s.call_on_name("wallet_pubkey_text", |view: &mut TextView| {
+        view.get_content().source().to_string()
+    }).unwrap_or_default();
+
+    let dialog = Dialog::new()
+        .title("Delegate Stake Account")
+        .content(
+            LinearLayout::vertical()
+                .child(TextView::new("Delegate From:"))
+                .child(TextView::new(format!("Stake Key: {}", stake_pubkey)))
+                .child(TextView::new(format!("Path: {}", stake_path)))
+                .child(DummyView.fixed_height(1))
+                .child(TextView::new("Delegate To:"))
+                .child(TextView::new(format!("Vote Key: {}", vote_pubkey)))
+                .child(TextView::new(format!("Path: {}", vote_path)))
+                .child(DummyView.fixed_height(1))
+                .child(TextView::new("Stake/Withdraw Auth:"))
+                .child(TextView::new(format!("Vault Key: {}", vault_pubkey)))
+                .child(TextView::new(format!("Path: {}", vault_path)))
+        )
+        .button("Cancel", |s| { s.pop_layer(); })
+        .button("Delegate", move |s| {
+            show_delegate_confirm_dialog(s, stake_path.clone(), vote_path.clone(), vault_path.clone());
+        });
+
+    s.add_layer(dialog);
+}
+
+fn show_delegate_confirm_dialog(s: &mut Cursive, stake_path: String, vote_path: String, vault_path: String) {
+    // Get stake balance
+    let stake_amount = s.call_on_name("stake1_balance", |view: &mut TextView| {
+        view.get_content().source().to_string()
+    }).unwrap_or_default();
+
+    let dialog = Dialog::new()
+        .title("Confirm Delegation")
+        .content(
+            LinearLayout::vertical()
+                .child(TextView::new("Are you sure you want to delegate?"))
+                .child(DummyView.fixed_height(1))
+                .child(TextView::new(format!("From: {}", stake_path)))
+                .child(TextView::new(format!("To: {}", vote_path)))
+                .child(TextView::new(format!("Auth: {}", vault_path)))
+                .child(TextView::new(format!("Amount: {}", stake_amount)))
+        )
+        .button("Cancel", |s| { s.pop_layer(); })
+        .button("Confirm", move |s| {
+            // Execute the command using std::process::Command
+            match std::process::Command::new("solana")
+                .arg("delegate-stake")
+                .arg(&stake_path)
+                .arg(&vote_path)
+                .arg("-k")
+                .arg(&vault_path)
+                .output() 
+            {
+                Ok(output) => {
+                    if output.status.success() {
+                        // Command executed successfully
+                        let success_msg = String::from_utf8_lossy(&output.stdout);
+                        update_logs(s, &format!("Successfully delegated {} XNT", stake_amount));
+                        if !success_msg.is_empty() {
+                            update_logs(s, &success_msg);
+                        }
+                    } else {
+                        // Command failed
+                        let error_msg = String::from_utf8_lossy(&output.stderr);
+                        update_logs(s, "Failed to delegate stake");
+                        if !error_msg.is_empty() {
+                            update_logs(s, &error_msg);
+                        }
+                    }
+                }
+                Err(e) => {
+                    // Failed to execute command
+                    update_logs(s, &format!("Error executing command: {}", e));
+                }
+            }
+
+            s.pop_layer();
+            s.pop_layer();  // Pop both dialogs
+        });
+
+    s.add_layer(dialog);
 }
