@@ -614,7 +614,7 @@ fn create_stake_key_section(index: usize, default_y: usize) -> LinearLayout {
         .child(
             LinearLayout::horizontal()
                 .child(Button::new("Deactivate Stake Account", move |s| {
-                    // TODO: Add deactivate stake functionality
+                    show_deactivate_dialog(s, index);
                 }).fixed_width(28))
         )
 }
@@ -1840,6 +1840,95 @@ fn show_delegate_confirm_dialog(s: &mut Cursive, stake_path: String, vote_path: 
                         // Command failed
                         let error_msg = String::from_utf8_lossy(&output.stderr);
                         update_logs(s, "Failed to delegate stake");
+                        if !error_msg.is_empty() {
+                            update_logs(s, &error_msg);
+                        }
+                    }
+                }
+                Err(e) => {
+                    // Failed to execute command
+                    update_logs(s, &format!("Error executing command: {}", e));
+                }
+            }
+
+            s.pop_layer();
+            s.pop_layer();  // Pop both dialogs
+        });
+
+    s.add_layer(dialog);
+}
+
+fn show_deactivate_dialog(s: &mut Cursive, stake_index: usize) {
+    // Get stake key info
+    let stake_path = s.call_on_name(&format!("stake{}_path_text", stake_index), |view: &mut TextView| {
+        view.get_content().source().to_string()
+    }).unwrap_or_default();
+    
+    let stake_pubkey = s.call_on_name(&format!("stake{}_pubkey_text", stake_index), |view: &mut TextView| {
+        view.get_content().source().to_string()
+    }).unwrap_or_default();
+
+    // Get vault key info (stake authority)
+    let vault_path = s.call_on_name("wallet_path_text", |view: &mut TextView| {
+        view.get_content().source().to_string()
+    }).unwrap_or_default();
+    
+    let vault_pubkey = s.call_on_name("wallet_pubkey_text", |view: &mut TextView| {
+        view.get_content().source().to_string()
+    }).unwrap_or_default();
+
+    let dialog = Dialog::new()
+        .title("Deactivate Stake Account")
+        .content(
+            LinearLayout::vertical()
+                .child(TextView::new("Stake Account:"))
+                .child(TextView::new(format!("Pubkey: {}", stake_pubkey)))
+                .child(TextView::new(format!("Path: {}", stake_path)))
+                .child(DummyView.fixed_height(1))
+                .child(TextView::new("Stake Authority:"))
+                .child(TextView::new(format!("Pubkey: {}", vault_pubkey)))
+                .child(TextView::new(format!("Path: {}", vault_path)))
+        )
+        .button("Cancel", |s| { s.pop_layer(); })
+        .button("Deactivate", move |s| {
+            show_deactivate_confirm_dialog(s, stake_path.clone(), vault_path.clone());
+        });
+
+    s.add_layer(dialog);
+}
+
+fn show_deactivate_confirm_dialog(s: &mut Cursive, stake_path: String, vault_path: String) {
+    let dialog = Dialog::new()
+        .title("Confirm Deactivation")
+        .content(
+            LinearLayout::vertical()
+                .child(TextView::new("Are you sure you want to deactivate this stake account?"))
+                .child(DummyView.fixed_height(1))
+                .child(TextView::new(format!("Stake Account: {}", stake_path)))
+                .child(TextView::new(format!("Authority: {}", vault_path)))
+        )
+        .button("Cancel", |s| { s.pop_layer(); })
+        .button("Confirm", move |s| {
+            // Execute the deactivate command
+            match std::process::Command::new("solana")
+                .arg("deactivate-stake")
+                .arg(&stake_path)
+                .arg("-k")
+                .arg(&vault_path)
+                .output() 
+            {
+                Ok(output) => {
+                    if output.status.success() {
+                        // Command executed successfully
+                        let success_msg = String::from_utf8_lossy(&output.stdout);
+                        update_logs(s, "Successfully deactivated stake account");
+                        if !success_msg.is_empty() {
+                            update_logs(s, &success_msg);
+                        }
+                    } else {
+                        // Command failed
+                        let error_msg = String::from_utf8_lossy(&output.stderr);
+                        update_logs(s, "Failed to deactivate stake account");
                         if !error_msg.is_empty() {
                             update_logs(s, &error_msg);
                         }
