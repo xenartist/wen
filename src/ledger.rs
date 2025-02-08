@@ -610,6 +610,13 @@ fn create_stake_key_section(index: usize, default_y: usize) -> LinearLayout {
                     show_delegate_dialog(s, index);
                 }).fixed_width(25))
         )
+        .child(DummyView.fixed_height(1))
+        .child(
+            LinearLayout::horizontal()
+                .child(Button::new("Deactivate Stake Account", move |s| {
+                    // TODO: Add deactivate stake functionality
+                }).fixed_width(28))
+        )
 }
 
 // Add functions for stake account selection
