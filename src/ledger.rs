@@ -832,7 +832,12 @@ pub fn get_ledger_view() -> LinearLayout {
                                 .with_name("validator_button")
                                 .fixed_width(25))
                 )
-                .child(DummyView.fixed_height(1))
+                // Add IDENTITY KEY section
+                .child(Panel::new(
+                    LinearLayout::vertical()
+                        .child(TextView::new("IDENTITY KEY:"))
+                        .child(DummyView.fixed_height(1))
+                ))
                 .child(
                     TextView::new(
                         StyledString::styled(
