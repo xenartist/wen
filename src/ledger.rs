@@ -837,6 +837,24 @@ pub fn get_ledger_view() -> LinearLayout {
                     LinearLayout::vertical()
                         .child(TextView::new("IDENTITY KEY:"))
                         .child(DummyView.fixed_height(1))
+                        .child(
+                            LinearLayout::horizontal()
+                                .child(Button::new("Show Pubkey & Balance", |s| {
+                                    show_identity_info(s);
+                                }).fixed_width(25))
+                                .child(DummyView.fixed_width(1))
+                                .child(Button::new("Copy Pubkey", |s| {
+                                    copy_identity_pubkey(s);
+                                }).fixed_width(15))
+                                .child(DummyView.fixed_width(1))
+                                .child(Button::new("Transfer XNT", |s| {
+                                    show_identity_transfer_dialog(s);
+                                }).fixed_width(15))
+                        )
+                        .child(DummyView.fixed_height(1))
+                        .child(Button::new("Create Identity Account", |s| {
+                            show_create_identity_dialog(s);
+                        }).fixed_width(28))
                 ))
                 .child(
                     TextView::new(
@@ -1949,5 +1967,57 @@ fn show_deactivate_confirm_dialog(s: &mut Cursive, stake_path: String, vault_pat
             s.pop_layer();  // Pop both dialogs
         });
 
+    s.add_layer(dialog);
+}
+
+// Add helper functions for identity key operations
+fn show_identity_info(s: &mut Cursive) {
+    // Similar to show_wallet_info but for identity key
+    update_logs(s, "Checking identity account info...");
+    // TODO: Implement actual functionality
+}
+
+fn copy_identity_pubkey(s: &mut Cursive) {
+    // Similar to copy_wallet_pubkey but for identity key
+    update_logs(s, "Copying identity pubkey to clipboard...");
+    // TODO: Implement actual functionality
+}
+
+fn show_identity_transfer_dialog(s: &mut Cursive) {
+    // Similar to show_transfer_dialog but for identity key
+    let dialog = Dialog::new()
+        .title("Transfer XNT from Identity Account")
+        .content(
+            LinearLayout::vertical()
+                .child(TextView::new("Recipient Address:"))
+                .child(EditView::new().with_name("recipient_address"))
+                .child(DummyView.fixed_height(1))
+                .child(TextView::new("Amount (XNT):"))
+                .child(EditView::new().with_name("transfer_amount"))
+        )
+        .button("Cancel", |s| { s.pop_layer(); })
+        .button("Transfer", |s| {
+            // TODO: Implement actual transfer functionality
+            update_logs(s, "Processing transfer from identity account...");
+            s.pop_layer();
+        });
+    
+    s.add_layer(dialog);
+}
+
+fn show_create_identity_dialog(s: &mut Cursive) {
+    let dialog = Dialog::new()
+        .title("Create Identity Account")
+        .content(
+            LinearLayout::vertical()
+                .child(TextView::new("Create a new identity account?"))
+        )
+        .button("Cancel", |s| { s.pop_layer(); })
+        .button("Create", |s| {
+            // TODO: Implement actual creation functionality
+            update_logs(s, "Creating identity account...");
+            s.pop_layer();
+        });
+    
     s.add_layer(dialog);
 }
