@@ -7,14 +7,14 @@ use chacha20poly1305::{
     ChaCha20Poly1305, Key, Nonce,
     aead::{Aead, NewAead},
 };
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+use bs58;
 
 #[derive(Debug)]
 pub enum EncryptError {
     KeyDerivationError(String),
     EncryptionError(String),
     DecryptionError(String),
-    Base64Error(String),
+    Base58Error(String),
 }
 
 impl std::fmt::Display for EncryptError {
@@ -23,7 +23,7 @@ impl std::fmt::Display for EncryptError {
             Self::KeyDerivationError(msg) => write!(f, "Key derivation error: {}", msg),
             Self::EncryptionError(msg) => write!(f, "Encryption error: {}", msg),
             Self::DecryptionError(msg) => write!(f, "Decryption error: {}", msg),
-            Self::Base64Error(msg) => write!(f, "Base64 error: {}", msg),
+            Self::Base58Error(msg) => write!(f, "Base58 error: {}", msg),
         }
     }
 }
@@ -81,12 +81,13 @@ impl Encryptor {
         combined.extend_from_slice(&nonce);
         combined.extend_from_slice(&encrypted);
         
-        Ok(BASE64.encode(combined))
+        Ok(bs58::encode(combined).into_string())
     }
 
-    pub fn decrypt(&self, password: &[u8], encrypted_base64: &str) -> Result<Vec<u8>, EncryptError> {
-        let combined = BASE64.decode(encrypted_base64)
-            .map_err(|e| EncryptError::Base64Error(e.to_string()))?;
+    pub fn decrypt(&self, password: &[u8], encrypted_base58: &str) -> Result<Vec<u8>, EncryptError> {
+        let combined = bs58::decode(encrypted_base58)
+            .into_vec()
+            .map_err(|e| EncryptError::Base58Error(e.to_string()))?;
         
         let salt_str = std::str::from_utf8(&combined[..32])
             .map_err(|e| EncryptError::DecryptionError(e.to_string()))?;
