@@ -2013,11 +2013,81 @@ fn show_create_identity_dialog(s: &mut Cursive) {
                 .child(TextView::new("Create a new identity account?"))
         )
         .button("Cancel", |s| { s.pop_layer(); })
-        .button("Create", |s| {
-            // TODO: Implement actual creation functionality
-            update_logs(s, "Creating identity account...");
+        .button("Create", move |s| {
+            // Get current validator value from validator_button
+            let validator = s.call_on_name("validator_button", |button: &mut Button| {
+                let label = button.label().to_string();
+                if let Some(num_str) = label.chars()
+                    .filter(|c| c.is_digit(10))
+                    .collect::<String>()
+                    .parse::<usize>()
+                    .ok() 
+                {
+                    num_str
+                } else {
+                    0
+                }
+            }).unwrap_or(0);
+            
+            // Get executable path
+            let exe_path = std::env::current_exe().unwrap_or_default();
+            let exe_dir = exe_path.parent().unwrap_or_else(|| std::path::Path::new(""));
+            
+            // Create directory path relative to executable
+            let dir_path = exe_dir.join("ledger-wallet").join(format!("validator-{}", validator));
+            
+            // Rest of the code remains the same...
+            if let Err(e) = std::fs::create_dir_all(&dir_path) {
+                update_logs(s, &format!("Failed to create directory: {}", e));
+                s.pop_layer();
+                return;
+            }
+
+            let output_path = dir_path.join("identity.json");
+            match std::process::Command::new("solana-keygen")
+                .args([
+                    "new",
+                    "--no-passphrase",
+                    "-o",
+                    output_path.to_str().unwrap_or_default(),
+                ])
+                .output()
+            {
+                Ok(output) => {
+                    if output.status.success() {
+                        update_logs(s, &format!(
+                            "Successfully created identity.json in {}",
+                            dir_path.display()
+                        ));
+                        
+                        match std::process::Command::new("solana-keygen")
+                            .args([
+                                "pubkey",
+                                output_path.to_str().unwrap_or_default(),
+                            ])
+                            .output()
+                        {
+                            Ok(pubkey_output) => {
+                                if pubkey_output.status.success() {
+                                    let pubkey = String::from_utf8_lossy(&pubkey_output.stdout);
+                                    update_logs(s, &format!("Generated pubkey: {}", pubkey.trim()));
+                                }
+                            }
+                            Err(e) => {
+                                update_logs(s, &format!("Failed to get pubkey: {}", e));
+                            }
+                        }
+                    } else {
+                        let error = String::from_utf8_lossy(&output.stderr);
+                        update_logs(s, &format!("Failed to create identity.json: {}", error));
+                    }
+                }
+                Err(e) => {
+                    update_logs(s, &format!("Failed to execute solana-keygen: {}", e));
+                }
+            }
             s.pop_layer();
         });
-    
+
     s.add_layer(dialog);
 }
