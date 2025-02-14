@@ -2036,7 +2036,6 @@ fn show_create_identity_dialog(s: &mut Cursive) {
             // Create directory path relative to executable
             let dir_path = exe_dir.join("ledger-wallet").join(format!("validator-{}", validator));
             
-            // Rest of the code remains the same...
             if let Err(e) = std::fs::create_dir_all(&dir_path) {
                 update_logs(s, &format!("Failed to create directory: {}", e));
                 s.pop_layer();
@@ -2060,33 +2059,88 @@ fn show_create_identity_dialog(s: &mut Cursive) {
                             dir_path.display()
                         ));
                         
-                        match std::process::Command::new("solana-keygen")
+                        // Get pubkey
+                        let pubkey = match std::process::Command::new("solana-keygen")
                             .args([
                                 "pubkey",
                                 output_path.to_str().unwrap_or_default(),
                             ])
                             .output()
                         {
-                            Ok(pubkey_output) => {
-                                if pubkey_output.status.success() {
-                                    let pubkey = String::from_utf8_lossy(&pubkey_output.stdout);
-                                    update_logs(s, &format!("Generated pubkey: {}", pubkey.trim()));
+                            Ok(pubkey_output) if pubkey_output.status.success() => {
+                                String::from_utf8_lossy(&pubkey_output.stdout).trim().to_string()
+                            }
+                            _ => "Failed to get pubkey".to_string(),
+                        };
+
+                        // Debug: Print full output
+                        let stdout = String::from_utf8_lossy(&output.stdout);
+                        let stderr = String::from_utf8_lossy(&output.stderr);
+                        update_logs(s, "Debug - STDOUT:");
+                        update_logs(s, &stdout);
+                        update_logs(s, "Debug - STDERR:");
+                        update_logs(s, &stderr);
+
+                        // Extract seed phrase from the output
+                        let mnemonic = stderr
+                            .lines()
+                            .skip_while(|line| !line.contains("Save this seed phrase"))
+                            .skip(1)  // Skip the "Save this seed phrase" line
+                            .next()   // Get the next line (the seed phrase)
+                            .map(|line| line.trim())
+                            .unwrap_or("Failed to get recovery phrase")
+                            .to_string();
+
+                        // First pop the creation dialog
+                        s.pop_layer();
+
+                        // Then show success dialog with pubkey and mnemonic
+                        let mnemonic_for_copy = mnemonic.clone();
+                        let success_dialog = Dialog::new()
+                            .title("Identity Account Created Successfully")
+                            .content(
+                                LinearLayout::vertical()
+                                    .child(TextView::new("Your identity account has been created."))
+                                    .child(DummyView.fixed_height(1))
+                                    .child(TextView::new(format!("Public Key: {}", pubkey)))
+                                    .child(DummyView.fixed_height(1))
+                                    .child(TextView::new("Recovery Phrase (write this down and store in a safe place):"))
+                                    .child(DummyView.fixed_height(1))
+                                    .child(TextView::new(&mnemonic)
+                                        .style(ColorStyle::secondary())
+                                        .center()
+                                        .fixed_width(70))
+                                    .child(DummyView.fixed_height(1))
+                            )
+                            .button("Copy Recovery Phrase", move |s| {
+                                let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
+                                if let Err(e) = ctx.set_contents(mnemonic_for_copy.clone()) {
+                                    update_logs(s, &format!("Failed to copy to clipboard: {}", e));
+                                } else {
+                                    update_logs(s, "Recovery phrase copied to clipboard");
                                 }
-                            }
-                            Err(e) => {
-                                update_logs(s, &format!("Failed to get pubkey: {}", e));
-                            }
-                        }
+                            })
+                            .button("I Have Backed Up, Close", |s| {
+                                s.pop_layer();
+                            });
+                        
+                        s.add_layer(success_dialog);
+                        update_logs(s, &format!("Generated pubkey: {}", pubkey));
+                        
+                        // Debug: Print the mnemonic we're using
+                        update_logs(s, &format!("Debug - Using mnemonic: {}", mnemonic));
+
                     } else {
                         let error = String::from_utf8_lossy(&output.stderr);
                         update_logs(s, &format!("Failed to create identity.json: {}", error));
+                        s.pop_layer();
                     }
                 }
                 Err(e) => {
                     update_logs(s, &format!("Failed to execute solana-keygen: {}", e));
+                    s.pop_layer();
                 }
             }
-            s.pop_layer();
         });
 
     s.add_layer(dialog);
