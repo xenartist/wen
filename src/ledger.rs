@@ -2082,7 +2082,7 @@ fn show_create_identity_dialog(s: &mut Cursive) {
                         update_logs(s, &stderr);
 
                         // Extract seed phrase from the output
-                        let mnemonic = stderr
+                        let mnemonic = stdout  // Changed from stderr to stdout
                             .lines()
                             .skip_while(|line| !line.contains("Save this seed phrase"))
                             .skip(1)  // Skip the "Save this seed phrase" line
