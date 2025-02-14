@@ -2107,7 +2107,7 @@ fn show_create_identity_dialog(s: &mut Cursive) {
                                     .child(TextView::new("Recovery Phrase (write this down and store in a safe place):"))
                                     .child(DummyView.fixed_height(1))
                                     .child(TextView::new(&mnemonic)
-                                        .style(ColorStyle::secondary())
+                                        .style(ColorStyle::highlight_inactive())  // Changed to title_primary for highlighting
                                         .center()
                                         .fixed_width(70))
                                     .child(DummyView.fixed_height(1))
