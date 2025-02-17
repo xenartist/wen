@@ -835,7 +835,12 @@ pub fn get_ledger_view() -> LinearLayout {
                 // Add IDENTITY KEY section
                 .child(Panel::new(
                     LinearLayout::vertical()
-                        .child(TextView::new("IDENTITY KEY:"))
+                        .child(
+                            LinearLayout::horizontal()
+                                .child(TextView::new("IDENTITY KEY:"))
+                                .child(DummyView.fixed_width(1))
+                                .child(TextView::new("").with_name("identity_pubkey_text"))
+                        )
                         .child(DummyView.fixed_height(1))
                         .child(
                             LinearLayout::horizontal()
@@ -2105,8 +2110,8 @@ fn show_create_identity_dialog(s: &mut Cursive) {
                                 // First pop the creation dialog
                                 s.pop_layer();
 
-                                // Then show success dialog with pubkey and mnemonic
-                                let mnemonic_for_copy = mnemonic.clone();
+                                let pubkey_for_close = pubkey.clone();  // Clone for the close button
+                                let mnemonic_for_copy = mnemonic.clone();  // Clone for the copy button
                                 let success_dialog = Dialog::new()
                                     .title("Identity Account Created Successfully")
                                     .content(
@@ -2118,28 +2123,32 @@ fn show_create_identity_dialog(s: &mut Cursive) {
                                             .child(TextView::new("Recovery Phrase (write this down and store in a safe place):"))
                                             .child(DummyView.fixed_height(1))
                                             .child(TextView::new(&mnemonic)
-                                                .style(ColorStyle::highlight_inactive())  
+                                                .style(ColorStyle::title_primary())
                                                 .center()
                                                 .fixed_width(70))
                                             .child(DummyView.fixed_height(1))
-                                        )
-                                        .button("Copy Recovery Phrase", move |s| {
-                                            let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
-                                            if let Err(e) = ctx.set_contents(mnemonic_for_copy.clone()) {
-                                                update_logs(s, &format!("Failed to copy to clipboard: {}", e));
-                                            } else {
-                                                update_logs(s, "Recovery phrase copied to clipboard");
-                                            }
-                                        })
-                                        .button("I Have Backed Up, Close", |s| {
-                                            s.pop_layer();
+                                    )
+                                    .button("Copy Recovery Phrase", move |s| {
+                                        let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
+                                        if let Err(e) = ctx.set_contents(mnemonic_for_copy.clone()) {
+                                            update_logs(s, &format!("Failed to copy to clipboard: {}", e));
+                                        } else {
+                                            update_logs(s, "Recovery phrase copied to clipboard");
+                                        }
+                                    })
+                                    .button("I Have Backed Up, Close", move |s| {
+                                        // Update the identity pubkey display
+                                        s.call_on_name("identity_pubkey_text", |view: &mut TextView| {
+                                            view.set_content(pubkey_for_close.clone());
                                         });
-                                    
-                                    s.add_layer(success_dialog);
-                                    update_logs(s, &format!("Generated pubkey: {}", pubkey));
-                                    
-                                    // Debug: Print the mnemonic we're using
-                                    update_logs(s, &format!("Debug - Using mnemonic: {}", mnemonic));
+                                        s.pop_layer();
+                                    });
+                                
+                                s.add_layer(success_dialog);
+                                update_logs(s, &format!("Generated pubkey: {}", pubkey));
+                                
+                                // Debug: Print the mnemonic we're using
+                                update_logs(s, &format!("Debug - Using mnemonic: {}", mnemonic));
 
                             } else {
                                 let error = String::from_utf8_lossy(&output.stderr);
