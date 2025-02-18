@@ -2173,7 +2173,7 @@ fn show_create_identity_dialog(s: &mut Cursive) {
                 .child(
                     LinearLayout::vertical()
                         .child(protection_group.button("without_password", "Without Password"))
-                        .child(protection_group.button("with_password", "Protected by a Password (Coming Soon)"))
+                        .child(protection_group.button("with_password", "Protected by a Password"))
                 )
                 .child(DummyView.fixed_height(1))
         )
