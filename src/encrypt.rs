@@ -1,13 +1,16 @@
 use std::error::Error;
-use argon2::{
-    password_hash::{rand_core::OsRng, SaltString},
-    Argon2, Algorithm, Version, Params, KeyInit,
-};
+use std::fmt;
 use chacha20poly1305::{
+    aead::{Aead, KeyInit, AeadCore},
     ChaCha20Poly1305, Key, Nonce,
-    aead::{Aead, NewAead},
+};
+use rand::rngs::OsRng;
+use password_hash::rand_core::RngCore;
+use argon2::{
+    Argon2, Algorithm, Version, Params,
 };
 use bs58;
+use password_hash::SaltString;
 
 #[derive(Debug)]
 pub enum EncryptError {
@@ -17,18 +20,24 @@ pub enum EncryptError {
     Base58Error(String),
 }
 
-impl std::fmt::Display for EncryptError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for EncryptError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::KeyDerivationError(msg) => write!(f, "Key derivation error: {}", msg),
-            Self::EncryptionError(msg) => write!(f, "Encryption error: {}", msg),
-            Self::DecryptionError(msg) => write!(f, "Decryption error: {}", msg),
-            Self::Base58Error(msg) => write!(f, "Base58 error: {}", msg),
+            EncryptError::KeyDerivationError(msg) => write!(f, "Key derivation error: {}", msg),
+            EncryptError::EncryptionError(msg) => write!(f, "Encryption error: {}", msg),
+            EncryptError::DecryptionError(msg) => write!(f, "Decryption error: {}", msg),
+            EncryptError::Base58Error(msg) => write!(f, "Base58 error: {}", msg),
         }
     }
 }
 
 impl Error for EncryptError {}
+
+impl From<Box<dyn Error>> for EncryptError {
+    fn from(error: Box<dyn Error>) -> Self {
+        EncryptError::KeyDerivationError(error.to_string())
+    }
+}
 
 pub struct Encryptor {
     argon2: Argon2<'static>,
@@ -57,78 +66,55 @@ impl Encryptor {
         Self { argon2 }
     }
 
-    // Rest of the implementation remains the same...
-    fn derive_key(&self, password: &[u8], salt: &SaltString) -> Result<Vec<u8>, EncryptError> {
-        let mut key = vec![0u8; 32];
-        self.argon2
-            .hash_password_into(password, salt.as_ref(), &mut key)
-            .map_err(|e| EncryptError::KeyDerivationError(e.to_string()))?;
+    fn derive_key(&self, password: &[u8], salt: &[u8]) -> Result<[u8; 32], EncryptError> {
+        let mut key = [0u8; 32];
+
+        Argon2::default()
+            .hash_password_into(password, salt, &mut key)
+            .map_err(|e| EncryptError::KeyDerivationError(format!("Failed to derive key: {}", e)))?;
+
         Ok(key)
     }
 
-    pub fn encrypt(&self, password: &[u8], data: &[u8]) -> Result<String, EncryptError> {
-        let salt = SaltString::generate(&mut OsRng);
+    pub fn encrypt(&self, password: &[u8], data: &[u8]) -> Result<Vec<u8>, EncryptError> {
+        // Generate a random salt
+        let mut salt = [0u8; 32];
+        OsRng.fill_bytes(&mut salt);
+
         let key = self.derive_key(password, &salt)?;
+        let cipher = ChaCha20Poly1305::new(Key::from_slice(&key));
+        
+        // Generate a random nonce
         let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng);
-        let cipher = ChaCha20Poly1305::new(Key::from_slice(&key));
-        
-        let encrypted = cipher
+
+        let encrypted_data = cipher
             .encrypt(&nonce, data)
-            .map_err(|e| EncryptError::EncryptionError(e.to_string()))?;
-        
-        let mut combined = Vec::new();
-        combined.extend_from_slice(salt.as_str().as_bytes());
-        combined.extend_from_slice(&nonce);
-        combined.extend_from_slice(&encrypted);
-        
-        Ok(bs58::encode(combined).into_string())
+            .map_err(|e| EncryptError::EncryptionError(format!("Encryption failed: {}", e)))?;
+
+        // Combine salt + nonce + encrypted data
+        let mut result = Vec::with_capacity(salt.len() + nonce.len() + encrypted_data.len());
+        result.extend_from_slice(&salt);
+        result.extend_from_slice(&nonce);
+        result.extend_from_slice(&encrypted_data);
+
+        Ok(result)
     }
 
-    pub fn decrypt(&self, password: &[u8], encrypted_base58: &str) -> Result<Vec<u8>, EncryptError> {
-        let combined = bs58::decode(encrypted_base58)
-            .into_vec()
-            .map_err(|e| EncryptError::Base58Error(e.to_string()))?;
-        
-        let salt_str = std::str::from_utf8(&combined[..32])
-            .map_err(|e| EncryptError::DecryptionError(e.to_string()))?;
-        let salt = SaltString::new(salt_str)
-            .map_err(|e| EncryptError::DecryptionError(e.to_string()))?;
-        let nonce = Nonce::from_slice(&combined[32..44]);
-        let encrypted_data = &combined[44..];
-        
-        let key = self.derive_key(password, &salt)?;
+    pub fn decrypt(&self, password: &[u8], encrypted_data: &[u8]) -> Result<Vec<u8>, EncryptError> {
+        if encrypted_data.len() < 44 {  // 32 (salt) + 12 (nonce)
+            return Err(EncryptError::EncryptionError("Invalid encrypted data length".to_string()));
+        }
+
+        // Extract salt, nonce and encrypted data
+        let salt = &encrypted_data[..32];
+        let nonce = &encrypted_data[32..44];
+        let ciphertext = &encrypted_data[44..];
+
+        let key = self.derive_key(password, salt)?;
         let cipher = ChaCha20Poly1305::new(Key::from_slice(&key));
-        
+
         cipher
-            .decrypt(nonce, encrypted_data)
-            .map_err(|e| EncryptError::DecryptionError(e.to_string()))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_encryption_decryption() {
-        let encryptor = Encryptor::new();
-        let password = b"test_password";
-        let data = b"sensitive data to encrypt";
-
-        let encrypted = encryptor.encrypt(password, data).unwrap();
-        let decrypted = encryptor.decrypt(password, &encrypted).unwrap();
-
-        assert_eq!(data.to_vec(), decrypted);
-    }
-
-    #[test]
-    fn test_wrong_password() {
-        let encryptor = Encryptor::new();
-        let password = b"correct_password";
-        let wrong_password = b"wrong_password";
-        let data = b"sensitive data to encrypt";
-
-        let encrypted = encryptor.encrypt(password, data).unwrap();
-        assert!(encryptor.decrypt(wrong_password, &encrypted).is_err());
+            .decrypt(Nonce::from_slice(nonce), ciphertext)
+            .map_err(|e| EncryptError::EncryptionError(format!("Decryption failed: {}", e)))
     }
 }

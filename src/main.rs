@@ -1,4 +1,5 @@
 mod ledger;
+mod encrypt;
 
 use cursive::Cursive;
 use cursive::theme::{Theme, BaseColor, Color, PaletteColor, ColorStyle};

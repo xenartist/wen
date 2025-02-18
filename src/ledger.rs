@@ -19,6 +19,7 @@ use cursive::views::NamedView;
 use clipboard::{ClipboardContext, ClipboardProvider};
 use serde::{Serialize, Deserialize};
 use std::collections::BTreeMap;
+use crate::encrypt::Encryptor; 
 
 // Add a constant for maximum log lines
 const MAX_LOG_LINES: usize = 100;
@@ -2163,11 +2164,202 @@ fn show_create_identity_dialog(s: &mut Cursive) {
                     }
                 },
                 &"with_password" => {  // Added & to match &&str
-                    update_logs(s, "Password protection feature coming soon!");
-                    s.pop_layer();
+                    // Get current validator value
+                    let validator = s.call_on_name("validator_button", |button: &mut Button| {
+                        let label = button.label().to_string();
+                        if let Some(num_str) = label.chars()
+                            .filter(|c| c.is_digit(10))
+                            .collect::<String>()
+                            .parse::<usize>()
+                            .ok() 
+                        {
+                            num_str
+                        } else {
+                            0
+                        }
+                    }).unwrap_or(0);
+
+                    s.pop_layer();  // Pop the protection type dialog
+                    show_password_input_dialog(s, validator);
                 },
                 _ => {
                     update_logs(s, "Please select a protection type");
+                }
+            }
+        });
+
+    s.add_layer(dialog);
+}
+
+fn show_password_input_dialog(s: &mut Cursive, validator: usize) {
+    let dialog = Dialog::new()
+        .title("Set Password")
+        .content(
+            LinearLayout::vertical()
+                .child(TextView::new("Enter a password to protect your identity key:"))
+                .child(DummyView.fixed_height(1))
+                .child(EditView::new()
+                    .secret()
+                    .with_name("password")
+                    .fixed_width(50))
+                .child(DummyView.fixed_height(1))
+                .child(TextView::new("Confirm password:"))
+                .child(EditView::new()
+                    .secret()
+                    .with_name("password_confirm")
+                    .fixed_width(50))
+        )
+        .button("Cancel", |s| { s.pop_layer(); })
+        .button("Create", move |s| {
+            let password = s.call_on_name("password", |view: &mut EditView| {
+                view.get_content()
+            }).unwrap_or_default();
+            
+            let password_confirm = s.call_on_name("password_confirm", |view: &mut EditView| {
+                view.get_content()
+            }).unwrap_or_default();
+
+            if password != password_confirm {
+                s.add_layer(
+                    Dialog::info("Passwords do not match. Please try again.")
+                );
+                return;
+            }
+
+            // Get paths
+            let exe_path = std::env::current_exe().unwrap_or_default();
+            let exe_dir = exe_path.parent().unwrap_or_else(|| std::path::Path::new(""));
+            let dir_path = exe_dir.join("ledger-wallet").join(format!("validator-{}", validator));
+            
+            if let Err(e) = std::fs::create_dir_all(&dir_path) {
+                update_logs(s, &format!("Failed to create directory: {}", e));
+                s.pop_layer();
+                return;
+            }
+
+            let temp_keypair_path = dir_path.join("temp.json");
+            let encrypted_keypair_path = dir_path.join("identity-encrypted.json");
+
+            // First create a temporary keypair
+            match std::process::Command::new("solana-keygen")
+                .args([
+                    "new",
+                    "--no-passphrase",
+                    "-o",
+                    temp_keypair_path.to_str().unwrap_or_default(),
+                ])
+                .output()
+            {
+                Ok(output) => {
+                    if output.status.success() {
+                        // Get pubkey and keypair data
+                        let pubkey = match std::process::Command::new("solana-keygen")
+                            .args([
+                                "pubkey",
+                                temp_keypair_path.to_str().unwrap_or_default(),
+                            ])
+                            .output()
+                        {
+                            Ok(pubkey_output) if pubkey_output.status.success() => {
+                                String::from_utf8_lossy(&pubkey_output.stdout).trim().to_string()
+                            }
+                            _ => {
+                                update_logs(s, "Failed to get pubkey");
+                                s.pop_layer();
+                                return;
+                            }
+                        };
+
+                        // Read the keypair file
+                        let keypair_data = match std::fs::read(&temp_keypair_path) {
+                            Ok(data) => data,
+                            Err(e) => {
+                                update_logs(s, &format!("Failed to read keypair file: {}", e));
+                                s.pop_layer();
+                                return;
+                            }
+                        };
+
+                        // Encrypt the keypair
+                        let encryptor = Encryptor::new();
+                        match encryptor.encrypt(password.as_bytes(), &keypair_data) {
+                            Ok(encrypted_data) => {
+                                // Write encrypted data to file
+                                if let Err(e) = std::fs::write(&encrypted_keypair_path, &encrypted_data) {
+                                    update_logs(s, &format!("Failed to write encrypted keypair: {}", e));
+                                    s.pop_layer();
+                                    return;
+                                }
+                            }
+                            Err(e) => {
+                                update_logs(s, &format!("Failed to encrypt keypair: {}", e));
+                                s.pop_layer();
+                                return;
+                            }
+                        }
+
+                        // Remove temporary keypair file
+                        let _ = std::fs::remove_file(&temp_keypair_path);
+
+                        // Extract seed phrase from the output
+                        let stdout = String::from_utf8_lossy(&output.stdout);
+                        let stderr = String::from_utf8_lossy(&output.stderr);
+                        let mnemonic = stderr
+                            .lines()
+                            .skip_while(|line| !line.contains("Save this seed phrase"))
+                            .skip(1)
+                            .next()
+                            .map(|line| line.trim())
+                            .unwrap_or("Failed to get recovery phrase")
+                            .to_string();
+
+                        s.pop_layer();  // Pop password dialog
+
+                        // Show success dialog
+                        let pubkey_for_close = pubkey.clone();
+                        let mnemonic_for_copy = mnemonic.clone();
+                        let success_dialog = Dialog::new()
+                            .title("Identity Account Created Successfully")
+                            .content(
+                                LinearLayout::vertical()
+                                    .child(TextView::new("Your password-protected identity account has been created."))
+                                    .child(DummyView.fixed_height(1))
+                                    .child(TextView::new(format!("Public Key: {}", pubkey)))
+                                    .child(DummyView.fixed_height(1))
+                                    .child(TextView::new("Recovery Phrase (write this down and store in a safe place):"))
+                                    .child(DummyView.fixed_height(1))
+                                    .child(TextView::new(&mnemonic)
+                                        .style(ColorStyle::title_primary())
+                                        .center()
+                                        .fixed_width(70))
+                                    .child(DummyView.fixed_height(1))
+                            )
+                            .button("Copy Recovery Phrase", move |s| {
+                                let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
+                                if let Err(e) = ctx.set_contents(mnemonic_for_copy.clone()) {
+                                    update_logs(s, &format!("Failed to copy to clipboard: {}", e));
+                                } else {
+                                    update_logs(s, "Recovery phrase copied to clipboard");
+                                }
+                            })
+                            .button("I Have Backed Up, Close", move |s| {
+                                s.call_on_name("identity_pubkey_text", |view: &mut TextView| {
+                                    view.set_content(pubkey_for_close.clone());
+                                });
+                                s.pop_layer();
+                            });
+
+                        s.add_layer(success_dialog);
+                        update_logs(s, &format!("Generated encrypted identity keypair with pubkey: {}", pubkey));
+                    } else {
+                        let error = String::from_utf8_lossy(&output.stderr);
+                        update_logs(s, &format!("Failed to create keypair: {}", error));
+                        s.pop_layer();
+                    }
+                }
+                Err(e) => {
+                    update_logs(s, &format!("Failed to execute solana-keygen: {}", e));
+                    s.pop_layer();
                 }
             }
         });
