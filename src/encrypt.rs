@@ -5,19 +5,14 @@ use chacha20poly1305::{
     ChaCha20Poly1305, Key, Nonce,
 };
 use rand::rngs::OsRng;
-use password_hash::rand_core::RngCore;
-use argon2::{
-    Argon2, Algorithm, Version, Params,
-};
-use bs58;
-use password_hash::SaltString;
+use rand_core::RngCore;
+use argon2::{Argon2, Algorithm, Version, Params};
 
 #[derive(Debug)]
 pub enum EncryptError {
     KeyDerivationError(String),
     EncryptionError(String),
     DecryptionError(String),
-    Base58Error(String),
 }
 
 impl fmt::Display for EncryptError {
@@ -26,7 +21,6 @@ impl fmt::Display for EncryptError {
             EncryptError::KeyDerivationError(msg) => write!(f, "Key derivation error: {}", msg),
             EncryptError::EncryptionError(msg) => write!(f, "Encryption error: {}", msg),
             EncryptError::DecryptionError(msg) => write!(f, "Decryption error: {}", msg),
-            EncryptError::Base58Error(msg) => write!(f, "Base58 error: {}", msg),
         }
     }
 }
@@ -43,23 +37,16 @@ pub struct Encryptor {
     argon2: Argon2<'static>,
 }
 
-impl Default for Encryptor {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Encryptor {
     pub fn new() -> Self {
-        // Configure Argon2id with DKM parameters
         let argon2 = Argon2::new(
             Algorithm::Argon2id,
             Version::V0x13,
             Params::new(
-                65536,     // Memory size in KB (64MB = 65536KB)
-                3,         // Number of iterations (time)
-                4,         // Degree of parallelism (threads)
-                Some(32),  // Output length (32 bytes)
+                65536,
+                3,
+                4,
+                Some(32),
             ).unwrap(),
         );
 
@@ -68,8 +55,8 @@ impl Encryptor {
 
     fn derive_key(&self, password: &[u8], salt: &[u8]) -> Result<[u8; 32], EncryptError> {
         let mut key = [0u8; 32];
-
-        Argon2::default()
+        
+        self.argon2
             .hash_password_into(password, salt, &mut key)
             .map_err(|e| EncryptError::KeyDerivationError(format!("Failed to derive key: {}", e)))?;
 
@@ -101,8 +88,8 @@ impl Encryptor {
     }
 
     pub fn decrypt(&self, password: &[u8], encrypted_data: &[u8]) -> Result<Vec<u8>, EncryptError> {
-        if encrypted_data.len() < 44 {  // 32 (salt) + 12 (nonce)
-            return Err(EncryptError::EncryptionError("Invalid encrypted data length".to_string()));
+        if encrypted_data.len() < 44 {
+            return Err(EncryptError::DecryptionError("Invalid encrypted data length".to_string()));
         }
 
         // Extract salt, nonce and encrypted data
@@ -115,7 +102,7 @@ impl Encryptor {
 
         cipher
             .decrypt(Nonce::from_slice(nonce), ciphertext)
-            .map_err(|e| EncryptError::EncryptionError(format!("Decryption failed: {}", e)))
+            .map_err(|e| EncryptError::DecryptionError(format!("Decryption failed: {}", e)))
     }
 }
 
