@@ -40,13 +40,13 @@ pub struct Encryptor {
 impl Encryptor {
     pub fn new() -> Self {
         let argon2 = Argon2::new(
-            Algorithm::Argon2id,
-            Version::V0x13,
+            Algorithm::Argon2id,        // Argon2id 
+            Version::V0x13,             // latest version
             Params::new(
-                65536,
-                3,
-                4,
-                Some(32),
+                65536,          // Memory size in KB (64MB = 65536KB)
+                3,              // Number of iterations (time)
+                4,              // Degree of parallelism (threads)
+                Some(32),   // Output length (32 bytes)
             ).unwrap(),
         );
 
