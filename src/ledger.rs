@@ -2029,51 +2029,91 @@ fn show_identity_info(s: &mut Cursive) {
                             let encryptor = Encryptor::new();
                             match encryptor.decrypt(password.as_bytes(), &encrypted_data) {
                                 Ok(decrypted_data) => {
-                                    // Write decrypted data to a temporary file
-                                    let temp_path = dir_path.join("temp-identity.json");
-                                    if let Err(e) = std::fs::write(&temp_path, &decrypted_data) {
-                                        update_logs(s, &format!("Failed to write temporary file: {}", e));
-                                        s.pop_layer();
-                                        return;
-                                    }
-
-                                    // Use existing get_pubkey and get_balance functions
-                                    match get_pubkey(&temp_path.to_string_lossy()) {
-                                        Ok(pubkey) => {
-                                            match get_balance(&temp_path.to_string_lossy()) {
-                                                Ok(balance) => {
-                                                    // Remove temporary file
-                                                    let _ = std::fs::remove_file(&temp_path);
-                                                    
-                                                    // Pop password dialog
+                                    // Get pubkey using solana address command with stdin
+                                    let pubkey = match std::process::Command::new("solana")
+                                        .args(["address", "-k", "-"])
+                                        .stdin(std::process::Stdio::piped())
+                                        .stdout(std::process::Stdio::piped())
+                                        .spawn() 
+                                    {
+                                        Ok(mut child) => {
+                                            if let Some(mut stdin) = child.stdin.take() {
+                                                use std::io::Write;
+                                                if let Err(e) = stdin.write_all(&decrypted_data) {
+                                                    update_logs(s, &format!("Failed to write to stdin: {}", e));
                                                     s.pop_layer();
-
-                                                    // Show info dialog
-                                                    s.add_layer(
-                                                        Dialog::new()
-                                                            .title("Identity Account Info")
-                                                            .content(
-                                                                LinearLayout::vertical()
-                                                                    .child(TextView::new(format!("Public Key: {}", pubkey)))
-                                                                    .child(DummyView.fixed_height(1))
-                                                                    .child(TextView::new(format!("Balance: {} SOL", balance)))
-                                                            )
-                                                            .button("Close", |s| { s.pop_layer(); })
-                                                    );
+                                                    return;
                                                 }
-                                                Err(e) => {
-                                                    let _ = std::fs::remove_file(&temp_path);
-                                                    update_logs(s, &format!("Failed to get balance: {}", e));
+                                            }
+                                            
+                                            match child.wait_with_output() {
+                                                Ok(output) if output.status.success() => {
+                                                    String::from_utf8_lossy(&output.stdout).trim().to_string()
+                                                }
+                                                _ => {
+                                                    update_logs(s, "Failed to get pubkey");
                                                     s.pop_layer();
+                                                    return;
                                                 }
                                             }
                                         }
                                         Err(e) => {
-                                            let _ = std::fs::remove_file(&temp_path);
-                                            update_logs(s, &format!("Failed to get pubkey: {}", e));
+                                            update_logs(s, &format!("Failed to spawn solana command: {}", e));
                                             s.pop_layer();
+                                            return;
                                         }
-                                    }
+                                    };
+
+                                    // Get balance using solana balance command with stdin
+                                    let balance = match std::process::Command::new("solana")
+                                        .args(["balance", "--keypair", "-"])
+                                        .stdin(std::process::Stdio::piped())
+                                        .stdout(std::process::Stdio::piped())
+                                        .spawn() 
+                                    {
+                                        Ok(mut child) => {
+                                            if let Some(mut stdin) = child.stdin.take() {
+                                                use std::io::Write;
+                                                if let Err(e) = stdin.write_all(&decrypted_data) {
+                                                    update_logs(s, &format!("Failed to write to stdin: {}", e));
+                                                    s.pop_layer();
+                                                    return;
+                                                }
+                                            }
+                                            
+                                            match child.wait_with_output() {
+                                                Ok(output) if output.status.success() => {
+                                                    String::from_utf8_lossy(&output.stdout).trim().to_string()
+                                                }
+                                                _ => {
+                                                    update_logs(s, "Failed to get balance");
+                                                    s.pop_layer();
+                                                    return;
+                                                }
+                                            }
+                                        }
+                                        Err(e) => {
+                                            update_logs(s, &format!("Failed to spawn solana command: {}", e));
+                                            s.pop_layer();
+                                            return;
+                                        }
+                                    };
+
+                                    // Pop password dialog
+                                    s.pop_layer();
+
+                                    // Show info dialog
+                                    s.add_layer(
+                                        Dialog::new()
+                                            .title("Identity Account Info")
+                                            .content(
+                                                LinearLayout::vertical()
+                                                    .child(TextView::new(format!("Public Key: {}", pubkey)))
+                                                    .child(DummyView.fixed_height(1))
+                                                    .child(TextView::new(format!("Balance: {} SOL", balance)))
+                                            )
+                                            .button("Close", |s| { s.pop_layer(); })
+                                    );
                                 }
                                 Err(e) => {
                                     update_logs(s, &format!("Failed to decrypt: {}", e));
