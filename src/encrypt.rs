@@ -118,3 +118,50 @@ impl Encryptor {
             .map_err(|e| EncryptError::EncryptionError(format!("Decryption failed: {}", e)))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_encryption_decryption() {
+        let encryptor = Encryptor::new();
+        let password = b"test_password";
+        let original_data = b"Hello, this is a test message!";
+
+        // Encrypt the data
+        let encrypted = encryptor.encrypt(password, original_data).unwrap();
+        
+        // Decrypt the data
+        let decrypted = encryptor.decrypt(password, &encrypted).unwrap();
+
+        // Compare original and decrypted data
+        assert_eq!(original_data.to_vec(), decrypted);
+        println!("Original data length: {}", original_data.len());
+        println!("Decrypted data length: {}", decrypted.len());
+        println!("Original data: {:?}", original_data);
+        println!("Decrypted data: {:?}", decrypted);
+    }
+
+    #[test]
+    fn test_keypair_encryption() {
+        let encryptor = Encryptor::new();
+        let password = b"test_password";
+        
+        // Sample keypair data (64 bytes, just for testing)
+        let keypair_data: Vec<u8> = (0..64).collect();
+        
+        // Encrypt the keypair
+        let encrypted = encryptor.encrypt(password, &keypair_data).unwrap();
+        
+        // Decrypt the keypair
+        let decrypted = encryptor.decrypt(password, &encrypted).unwrap();
+
+        // Compare original and decrypted keypair
+        assert_eq!(keypair_data, decrypted);
+        println!("Original keypair length: {}", keypair_data.len());
+        println!("Decrypted keypair length: {}", decrypted.len());
+        println!("Original keypair: {:?}", keypair_data);
+        println!("Decrypted keypair: {:?}", decrypted);
+    }
+}
