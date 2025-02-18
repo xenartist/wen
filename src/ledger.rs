@@ -1978,9 +1978,119 @@ fn show_deactivate_confirm_dialog(s: &mut Cursive, stake_path: String, vault_pat
 
 // Add helper functions for identity key operations
 fn show_identity_info(s: &mut Cursive) {
-    // Similar to show_wallet_info but for identity key
-    update_logs(s, "Checking identity account info...");
-    // TODO: Implement actual functionality
+    // Get current validator value
+    let validator = s.call_on_name("validator_button", |button: &mut Button| {
+        let label = button.label().to_string();
+        if let Some(num_str) = label.chars()
+            .filter(|c| c.is_digit(10))
+            .collect::<String>()
+            .parse::<usize>()
+            .ok() 
+        {
+            num_str
+        } else {
+            0
+        }
+    }).unwrap_or(0);
+
+    let exe_path = std::env::current_exe().unwrap_or_default();
+    let exe_dir = exe_path.parent().unwrap_or_else(|| std::path::Path::new(""));
+    let dir_path = exe_dir.join("ledger-wallet").join(format!("validator-{}", validator));
+    
+    let identity_path = dir_path.join("identity.json");
+    let encrypted_identity_path = dir_path.join("identity-encrypted.json");
+
+    if identity_path.exists() {
+        // For unencrypted identity file, use show_pubkey directly
+        show_pubkey(s, "identity_path_text", "identity_pubkey_text", "identity_balance");
+    } else if encrypted_identity_path.exists() {
+        // Handle encrypted identity file
+        s.add_layer(
+            Dialog::new()
+                .title("Enter Password")
+                .content(
+                    LinearLayout::vertical()
+                        .child(TextView::new("Enter password to decrypt your identity key:"))
+                        .child(DummyView.fixed_height(1))
+                        .child(EditView::new()
+                            .secret()
+                            .with_name("decrypt_password")
+                            .fixed_width(50))
+                )
+                .button("Cancel", |s| { s.pop_layer(); })
+                .button("Decrypt", move |s| {
+                    let password = s.call_on_name("decrypt_password", |view: &mut EditView| {
+                        view.get_content()
+                    }).unwrap_or_default();
+
+                    // Read encrypted file
+                    match std::fs::read(&encrypted_identity_path) {
+                        Ok(encrypted_data) => {
+                            let encryptor = Encryptor::new();
+                            match encryptor.decrypt(password.as_bytes(), &encrypted_data) {
+                                Ok(decrypted_data) => {
+                                    // Write decrypted data to a temporary file
+                                    let temp_path = dir_path.join("temp-identity.json");
+                                    if let Err(e) = std::fs::write(&temp_path, &decrypted_data) {
+                                        update_logs(s, &format!("Failed to write temporary file: {}", e));
+                                        s.pop_layer();
+                                        return;
+                                    }
+
+                                    // Use existing get_pubkey and get_balance functions
+                                    match get_pubkey(&temp_path.to_string_lossy()) {
+                                        Ok(pubkey) => {
+                                            match get_balance(&temp_path.to_string_lossy()) {
+                                                Ok(balance) => {
+                                                    // Remove temporary file
+                                                    let _ = std::fs::remove_file(&temp_path);
+                                                    
+                                                    // Pop password dialog
+                                                    s.pop_layer();
+
+                                                    // Show info dialog
+                                                    s.add_layer(
+                                                        Dialog::new()
+                                                            .title("Identity Account Info")
+                                                            .content(
+                                                                LinearLayout::vertical()
+                                                                    .child(TextView::new(format!("Public Key: {}", pubkey)))
+                                                                    .child(DummyView.fixed_height(1))
+                                                                    .child(TextView::new(format!("Balance: {} SOL", balance)))
+                                                            )
+                                                            .button("Close", |s| { s.pop_layer(); })
+                                                    );
+                                                }
+                                                Err(e) => {
+                                                    let _ = std::fs::remove_file(&temp_path);
+                                                    update_logs(s, &format!("Failed to get balance: {}", e));
+                                                    s.pop_layer();
+                                                }
+                                            }
+                                        }
+                                        Err(e) => {
+                                            let _ = std::fs::remove_file(&temp_path);
+                                            update_logs(s, &format!("Failed to get pubkey: {}", e));
+                                            s.pop_layer();
+                                        }
+                                    }
+                                }
+                                Err(e) => {
+                                    update_logs(s, &format!("Failed to decrypt: {}", e));
+                                    s.pop_layer();
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            update_logs(s, &format!("Failed to read encrypted file: {}", e));
+                            s.pop_layer();
+                        }
+                    }
+                })
+        );
+    } else {
+        s.add_layer(Dialog::info("No identity key found"));
+    }
 }
 
 fn copy_identity_pubkey(s: &mut Cursive) {
