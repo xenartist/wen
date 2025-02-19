@@ -2102,6 +2102,13 @@ fn show_identity_info(s: &mut Cursive) {
                                     // Pop password dialog
                                     s.pop_layer();
 
+                                    // Update the identity key display in main UI
+                                    s.call_on_name("identity_pubkey_text", |view: &mut TextView| {
+                                        // Remove "SOL" from balance string if it exists
+                                        let balance_num = balance.trim_end_matches(" SOL").trim();
+                                        view.set_content(format!("{} ({} XNT)", pubkey, balance_num));
+                                    });
+
                                     // Show info dialog
                                     s.add_layer(
                                         Dialog::new()
@@ -2110,7 +2117,7 @@ fn show_identity_info(s: &mut Cursive) {
                                                 LinearLayout::vertical()
                                                     .child(TextView::new(format!("Public Key: {}", pubkey)))
                                                     .child(DummyView.fixed_height(1))
-                                                    .child(TextView::new(format!("Balance: {} SOL", balance)))
+                                                    .child(TextView::new(format!("Balance: {} XNT", balance.trim_end_matches(" SOL").trim())))
                                             )
                                             .button("Close", |s| { s.pop_layer(); })
                                     );
